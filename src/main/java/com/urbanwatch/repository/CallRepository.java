@@ -15,4 +15,6 @@ public interface CallRepository extends JpaRepository<Call, Long> {
     List<Call> findByUserId(Long userId);
 
     List<Call> findByPausedTrue();
+
+    List<Call> findByLatitudeNotNullAndLongitudeNotNull();
 }

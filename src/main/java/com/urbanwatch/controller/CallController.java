@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -124,5 +125,14 @@ public class CallController {
     @PatchMapping("/{id}/sla")
     public ResponseEntity<CallResponse> atualizarSla(@PathVariable Long id) {
         return ResponseEntity.ok(callService.atualizarSla(id));
+    }
+
+    // GET /calls/proximos — listar chamados próximos
+    @GetMapping("/proximos")
+    public ResponseEntity<List<CallResponse>> listarProximos(
+            @RequestParam Double latitude,
+            @RequestParam Double longitude,
+            @RequestParam(defaultValue = "5.0") Double raio) {
+        return ResponseEntity.ok(callService.listarProximos(latitude, longitude, raio));
     }
 }
