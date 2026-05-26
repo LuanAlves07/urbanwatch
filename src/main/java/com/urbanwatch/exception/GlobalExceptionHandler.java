@@ -99,4 +99,12 @@ public class GlobalExceptionHandler {
     ) {
         return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, null);
     }
+
+    @ExceptionHandler(ImageNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleImageNotFound(
+            ImageNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
 }
