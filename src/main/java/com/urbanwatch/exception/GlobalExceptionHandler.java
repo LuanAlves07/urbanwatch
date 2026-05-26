@@ -76,4 +76,27 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
     }
     
+    @ExceptionHandler(CallReviewNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallReviewNotFound(
+            CallReviewNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+    
+    @ExceptionHandler(CallAlreadyReviewedException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallAlreadyReviewed(
+            CallAlreadyReviewedException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+    
+    @ExceptionHandler(CallNotFinishedException.class)
+    public ResponseEntity<ApiErrorResponse> handleCallNotFinished(
+            CallNotFinishedException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, null);
+    }
 }
