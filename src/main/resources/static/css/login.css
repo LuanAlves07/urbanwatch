@@ -1,0 +1,236 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: #8a8a90;
+    background: #8fc2e2;
+}
+
+.auth-page {
+    min-height: calc(100vh - 110px);
+    margin-top: 110px;
+    background: #8fc2e2;
+}
+
+.auth-layout {
+    display: grid;
+    grid-template-columns: 57.4fr 42.6fr;
+    min-height: calc(100vh - 110px);
+}
+
+.auth-side {
+    display: flex;
+    align-items: center;
+    padding: 72px 0;
+}
+
+.auth-side--left {
+    justify-content: flex-end;
+    padding-left: 24px;
+    background: rgba(188, 222, 242, 0.9);
+    background-image: url("/images/bg-login.png");
+    background-size: cover;
+    background-position: center;
+}
+
+.auth-side--right {
+    justify-content: flex-start;
+    padding-right: 24px;
+    background: rgba(93, 145, 240, 0.96);
+}
+
+.auth-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-panel--form {
+    width: min(600px, 100%);
+    min-height: 498px;
+    padding: 34px 40px;
+    border-radius: 24px 0 0 24px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.35);
+}
+
+.login-form {
+    width: min(520px, 100%);
+}
+
+.login-form h1 {
+    margin: 0 0 10px;
+    color: #5f95f6;
+    font-size: 36px;
+    font-weight: 400;
+    line-height: 1.15;
+    text-align: center;
+    text-shadow: 0 2px 3px rgba(39, 99, 184, 0.35);
+}
+
+.login-form p {
+    margin: 0 0 14px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.login-form label {
+    display: block;
+    margin: 16px 0 8px;
+    font-size: 24px;
+    font-weight: 400;
+    color: #8c8c92;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+}
+
+.login-form input {
+    width: 100%;
+    height: 50px;
+    padding: 0 22px;
+    border: 1px solid #b9b9bd;
+    border-radius: 10px;
+    background: #e4e4e7;
+    color: #555;
+    font-size: 16px;
+    outline: none;
+}
+
+.login-form input:focus {
+    border-color: #5f95f6;
+    box-shadow: 0 0 0 3px rgba(95, 149, 246, 0.18);
+}
+
+.login-form input::placeholder {
+    color: #9d9da2;
+}
+
+.login-form .input-error {
+    border-color: #f05d5d;
+    color: #c60000;
+    box-shadow: 0 0 0 2px rgba(240, 93, 93, 0.16);
+}
+
+.login-form .input-error::placeholder {
+    color: #c60000;
+}
+
+.forgot-link {
+    display: inline-block;
+    margin: 28px 0 22px;
+    color: #5a91ff;
+    font-size: 14px;
+}
+
+.login-form button {
+    display: block;
+    width: 255px;
+    height: 74px;
+    margin: 0 auto;
+    border: 0;
+    border-radius: 8px;
+    background: #5f95f6;
+    color: #fff;
+    font-size: 32px;
+    font-weight: 400;
+    cursor: pointer;
+    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.25);
+    transition: filter 0.2s linear;
+}
+
+.auth-panel--aside {
+    flex-direction: column;
+    width: min(404px, 100%);
+    min-height: 498px;
+    padding: 44px;
+    border-radius: 0 24px 24px 0;
+    background: #5f95f6;
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.35), inset 0 0 9px rgba(33, 76, 142, 0.45);
+}
+
+.auth-panel--aside h2 {
+    max-width: 340px;
+    margin: 0 0 38px;
+    font-size: 36px;
+    font-weight: 400;
+    line-height: 1.2;
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+}
+
+.auth-panel--aside p {
+    margin: 0 0 18px;
+    font-size: 22px;
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+}
+
+.aside-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 252px;
+    height: 72px;
+    border-radius: 5px;
+    background: #dfa91e;
+    color: #fff;
+    font-size: 31px;
+    text-decoration: none;
+    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.35);
+    transition: filter 0.2s linear;
+}
+
+@media (max-width: 840px) {
+    .auth-page {
+        min-height: calc(100vh - 88px);
+        margin-top: 88px;
+        background: #8fc2e2;
+    }
+
+    .auth-layout {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .auth-side {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .auth-side--left {
+        padding-top: 28px;
+        background-image: url("../images/bg-login.png");
+    }
+
+    .auth-side--right {
+        padding-bottom: 28px;
+    }
+
+    .auth-panel--form,
+    .auth-panel--aside {
+        width: 100%;
+        min-height: 0;
+        border-radius: 0;
+    }
+
+    .auth-panel--aside {
+        padding: 32px 22px;
+    }
+
+    .auth-panel--aside h2,
+    .login-form h1 {
+        font-size: 30px;
+    }
+
+    .login-form button,
+    .aside-button {
+        width: min(255px, 100%);
+    }
+}

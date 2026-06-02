@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SOS Urbano</title>
+    <link rel="stylesheet" th:href="@{/css/login.css}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/fragments.css}">
+</head>
+<body>
+    <div th:replace="~{fragments :: menu-nav}"></div>
+
+    <main class="auth-page">
+        <section class="auth-layout" aria-label="Acesso ao sistema">
+            <div class="auth-side auth-side--left">
+                <div class="auth-panel auth-panel--form">
+                    <form class="login-form" action="#" method="post">
+                        <h1>Ola, novamente!</h1>
+                        <p>Preencha os dados para realizar o login.</p>
+
+                        <label for="email">E-mail</label>
+                        <input id="email" name="email" type="text" placeholder="Ex.: seuemail@email.com" autocomplete="username">
+
+                        <label for="password">Senha</label>
+                        <input id="password" name="password" type="password" placeholder="************************" autocomplete="current-password">
+
+                        <a class="forgot-link" href="#">Esqueci minha senha</a>
+
+                        <button type="submit" class="hover-bright">Entrar</button>
+                    </form>
+                </div>
+            </div>
+
+            <aside class="auth-side auth-side--right">
+                <div class="auth-panel auth-panel--aside">
+                    <h2>Ainda nao tem uma conta?</h2>
+                    <p>Crie agora e comece a usar!</p>
+                    <a th:href="@{/register}" class="aside-button">Criar conta</a>
+                </div>
+            </aside>
+        </section>
+    </main>
+    <script th:src="@{/js/login.js}"></script>
+</body>
+</html>

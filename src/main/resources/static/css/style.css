@@ -1,0 +1,15 @@
+:root{
+    --primary-color: #1073E0;
+}
+
+.hover-bright{
+    transition: filter 0.3s linear;
+}
+
+.hover-bright:hover{
+    filter: brightness(0.85);
+}
+
+.hidden{
+    visibility: hidden;
+}
