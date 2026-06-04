@@ -16,8 +16,18 @@ public class ViewController {
         return "register";
     }
 
+    @GetMapping("/account")
+    public String accountPage() {
+        return "account";
+    }
+
     @GetMapping("/")
     public String indexPage() {
+        return "index";
+    }
+
+    @GetMapping("/index")
+    public String indexAliasPage() {
         return "index";
     }
 }

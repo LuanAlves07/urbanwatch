@@ -3,13 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Início - UrbanWatch</title>
+    <title>Início - SOS Urbano</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="stylesheet" th:href="@{/css/index.css}">
     <link rel="stylesheet" th:href="@{/css/fragments.css}">
 </head>
 <body>
-    <!-- Navbar -->
-    <div th:insert="~{fragments :: menu-nav}"></div>
+    <div th:replace="~{fragments :: menu-nav}"></div>
+
+    <main class="home-page" data-home-view>
+        <section class="home-shell">
+            <div class="home-left">
+                <p class="home-kicker">Um sistema para auxiliar a prefeitura na solução de problemas da cidade</p>
+                <h1>Busque por alertas feitos por outros cidadãos abaixo</h1>
+
+                <div class="map-panel" aria-label="Mapa de alertas proximos">
+                    <div id="homeMap" class="leaflet-map"></div>
+                </div>
+
+                <form class="cep-form" data-cep-form>
+                    <label for="cep">Insira o endereço ou CEP abaixo para criar um novo alerta:</label>
+                    <div class="cep-row">
+                        <input id="cep" name="location" type="text" placeholder="DIGITE O ENDEREÇO OU CEP DO LOCAL" autocomplete="street-address">
+                        <button type="submit">PROCEDER <span>&rsaquo;</span></button>
+                    </div>
+                </form>
+            </div>
+
+            <aside class="alerts-panel">
+                <h2>Verifique os alertas atualizados recentemente</h2>
+                <div class="alert-tabs" role="tablist" aria-label="Lista de alertas">
+                    <button type="button" class="alert-tab alert-tab--active" data-alert-tab="general">GERAL</button>
+                    <button type="button" class="alert-tab alert-tab--locked" data-alert-tab="mine">OS MEUS ALERTAS</button>
+                </div>
+                <div class="alert-list" data-alert-list>
+                    <p class="alert-empty">Carregando alertas...</p>
+                </div>
+            </aside>
+        </section>
+    </main>
+
+    <main class="create-page" data-create-view hidden>
+        <section class="create-shell">
+            <a class="create-close" th:href="@{/}" aria-label="Fechar">&times;</a>
+            <h1 class="create-title" data-create-title>Criar novo alerta</h1>
+
+            <form class="create-form" data-create-form>
+                <div class="create-column">
+                    <label class="form-card">
+                        <span>Título do alerta:</span>
+                        <input id="alertTitle" name="title" type="text" maxlength="200" required>
+                    </label>
+
+                    <div class="form-card form-card--address">
+                        <span>CEP do local:</span>
+                        <div class="address-row">
+                            <input id="alertCep" name="cep" type="text" maxlength="9" placeholder="XXXXX-XXX">
+                            <p data-address-text>Endereço nao informado</p>
+                        </div>
+                        <div class="map-panel map-panel--large" aria-label="Mapa do local">
+                            <div id="createMap" class="leaflet-map"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="create-column">
+                    <div class="form-card form-card--upload">
+                        <span>Anexo</span>
+                        <div class="upload-layout">
+                            <label class="upload-drop">
+                                <input id="alertFiles" name="files" type="file" accept="image/*,video/*" multiple>
+                                <span class="upload-files-ico">IMG</span>
+                                <span class="upload-files-desc">Clique para adicionar arquivos</span>
+                            </label>
+                            <div class="upload-list" data-upload-list></div>
+                        </div>
+                        <small>* Insira arquivos de imagem ou vídeo</small>
+
+                        <label class="observations">
+                            <span>Observações</span>
+                            <textarea id="alertDescription" name="description" maxlength="100" required></textarea>
+                            <small>Máx 100 caractéres</small>
+                        </label>
+
+                        <button type="submit" class="create-submit" data-create-submit>CRIAR ALERTA <span>&rsaquo;</span></button>
+                    </div>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <div class="call-modal" data-call-modal hidden>
+        <div class="call-modal__panel">
+            <button type="button" class="call-modal__close" data-modal-close aria-label="Fechar">&times;</button>
+            <div data-generic-detail>
+                <p class="call-modal__status" data-modal-status></p>
+                <h2 data-modal-title></h2>
+                <p data-modal-description></p>
+                <dl>
+                    <div>
+                        <dt>Endereco</dt>
+                        <dd data-modal-address></dd>
+                    </div>
+                    <div>
+                        <dt>Atualizado</dt>
+                        <dd data-modal-updated></dd>
+                    </div>
+                </dl>
+                <div class="modal-images" data-modal-images></div>
+            </div>
+
+            <section class="my-call-detail" data-my-call-detail hidden>
+                <header class="my-call-header">
+                    <div>
+                        <h2 data-my-title></h2>
+                        <p><span data-my-status></span> <span data-my-updated></span></p>
+                    </div>
+                    <div class="my-call-header__place">
+                        <strong data-my-address></strong>
+                        <span data-my-code></span>
+                    </div>
+                </header>
+
+                <div class="my-call-info">
+                    <dl>
+                        <div>
+                            <dt>Criado por:</dt>
+                            <dd data-my-user></dd>
+                        </div>
+                        <div>
+                            <dt>Criado em:</dt>
+                            <dd data-my-created></dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="call-actions" data-call-actions>
+                    <button type="button" class="call-action">Notificar urgencia</button>
+                    <button type="button" class="call-action" data-review-button>Avaliar</button>
+                    <button type="button" class="call-action call-action--edit" data-edit-call-button>Editar</button>
+                </div>
+
+                <section class="call-chat" data-call-chat>
+                    <div class="call-chat__messages" data-chat-messages></div>
+                    <form class="call-chat__form" data-chat-form>
+                        <label class="chat-attach">
+                            <input type="file" accept="image/*,video/*" data-chat-file hidden>
+                            Anexar arquivo (img/vid)
+                        </label>
+                        <div class="chat-file-preview" data-chat-file-preview hidden></div>
+                        <div class="chat-input-row">
+                            <input name="content" type="text" maxlength="280" placeholder="Digite uma mensagem">
+                            <button type="submit" aria-label="Enviar">&rsaquo;</button>
+                        </div>
+                    </form>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+    <script th:src="@{/js/index.js}"></script>
 </body>
 </html>

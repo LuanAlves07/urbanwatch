@@ -63,7 +63,7 @@ const UrbanWatchAuth = (() => {
         }
 
         currentUser = user;
-        loginLink.href = "#";
+        loginLink.href = "/account";
         loginText.textContent = `Olá, ${getFirstName(user.name)}!`;
         loginLink.classList.add("navbar__link--logged");
         navbar.classList.add("navbar--authenticated");
@@ -160,7 +160,7 @@ const UrbanWatchAuth = (() => {
         accountLink?.addEventListener("click", (event) => {
             event.preventDefault();
             if (currentUser) {
-                window.location.href = "#";
+                window.location.href = "/account";
             }
         });
     }

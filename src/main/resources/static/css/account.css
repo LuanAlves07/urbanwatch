@@ -1,0 +1,121 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: #222;
+    background: #fff url("../images/bg/bg.png") center center / cover no-repeat;
+    min-height: 100vh;
+}
+
+.account-page {
+    min-height: 100vh;
+    padding: 180px 24px 70px;
+}
+
+.account-panel {
+    width: min(620px, 100%);
+    margin: 0 auto;
+    padding: 34px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+}
+
+.account-kicker {
+    margin: 0 0 8px;
+    color: #1073e0;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.account-panel h1 {
+    margin: 0 0 28px;
+    color: #1f1f1f;
+    font-size: 28px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.account-info {
+    display: grid;
+    gap: 10px;
+    padding: 22px;
+    border-radius: 5px;
+    background: #f1f2f5;
+}
+
+.account-info span {
+    color: #555;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.account-email-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.account-email-row strong {
+    min-width: 0;
+    color: #111;
+    font-size: 16px;
+    word-break: break-word;
+}
+
+.account-email-row button,
+.account-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 5px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.account-email-row button,
+.account-button--secondary {
+    background: #e4e4e7;
+    color: #333;
+}
+
+.account-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.account-button--primary {
+    background: #1073e0;
+    color: #fff;
+}
+
+@media (max-width: 560px) {
+    .account-page {
+        padding-top: 128px;
+    }
+
+    .account-panel {
+        padding: 24px;
+    }
+
+    .account-email-row,
+    .account-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

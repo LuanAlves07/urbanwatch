@@ -36,7 +36,7 @@ body {
     justify-content: flex-end;
     padding-left: 24px;
     background: rgba(188, 222, 242, 0.9);
-    background-image: url("/images/bg-login.png");
+    background-image: url("../images/bg/bg-login.png");
     background-size: cover;
     background-position: center;
 }
@@ -206,7 +206,7 @@ body {
 
     .auth-side--left {
         padding-top: 28px;
-        background-image: url("../images/bg-login.png");
+        background-image: url("../images/bg/bg-login.png");
     }
 
     .auth-side--right {

@@ -2,6 +2,10 @@
     --primary-color: #1073E0;
 }
 
+body{
+    background-image: url("../images/bg/bg-register.png");
+}
+
 .hover-bright{
     transition: filter 0.3s linear;
 }
@@ -12,4 +16,41 @@
 
 .hidden{
     visibility: hidden;
+}
+
+button,
+a:not(.navbar__brand),
+input[type="submit"],
+input[type="button"] {
+    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+button:not(:disabled):hover,
+a:not(.navbar__brand):hover,
+input[type="submit"]:not(:disabled):hover,
+input[type="button"]:not(:disabled):hover {
+    transform: translateY(-1px);
+    filter: brightness(1);
+}
+
+button:not(:disabled):active,
+a:active,
+input[type="submit"]:not(:disabled):active,
+input[type="button"]:not(:disabled):active {
+    transform: translateY(0);
+}
+
+.cep-row button:not(:disabled):hover {
+    transform: none;
+    filter: brightness(0.9);
+}
+
+.cep-row button:not(:disabled):active {
+    transform: none;
+}
+
+button:disabled,
+input[type="submit"]:disabled,
+input[type="button"]:disabled {
+    filter: grayscale(0.2);
 }

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha conta - SOS Urbano</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/account.css}">
+    <link rel="stylesheet" th:href="@{/css/fragments.css}">
+</head>
+<body>
+    <div th:replace="~{fragments :: menu-nav}"></div>
+
+    <main class="account-page">
+        <section class="account-panel">
+            <p class="account-kicker">Minha conta</p>
+            <h1 data-account-name>Carregando...</h1>
+
+            <div class="account-info">
+                <span>Email</span>
+                <div class="account-email-row">
+                    <strong data-account-email>...</strong>
+                    <button type="button" data-toggle-email>Visualizar</button>
+                </div>
+            </div>
+
+            <div class="account-actions">
+                <a class="account-button account-button--secondary" th:href="@{/}">Voltar</a>
+                <button type="button" class="account-button account-button--primary" data-account-logout>Sair da conta</button>
+            </div>
+        </section>
+    </main>
+
+    <script th:src="@{/js/account.js}"></script>
+</body>
+</html>

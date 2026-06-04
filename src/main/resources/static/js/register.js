@@ -69,8 +69,9 @@ registerForm.addEventListener("submit", async (e) =>{
                 console.log("Success!")
                 window.location.href = "/";
             } else {
-                markPasswordError("Nao foi possivel registrar. Verifique a senha e os dados informados.");
-                console.error("Auth Error > Maybe email already exists");
+                const errorData = await response.json().catch(() => null);
+                markPasswordError(errorData?.message || "Nao foi possivel registrar. Verifique a senha e os dados informados.");
+                console.error("Auth Error > Register failed", errorData);
             }
         } catch (e){
             markPasswordError("Nao foi possivel registrar agora. Tente novamente em instantes.");

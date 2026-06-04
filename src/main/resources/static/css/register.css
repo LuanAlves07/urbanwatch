@@ -42,7 +42,7 @@ body {
     justify-content: flex-start;
     padding-right: 24px;
     background: rgba(245, 226, 187, 0.96);
-    background-image: url("/images/bg-register.png");
+    background-image: url("/images/bg/bg-register.png");
     background-size: cover;
     background-position: center;
 }
