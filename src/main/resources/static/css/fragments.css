@@ -61,6 +61,10 @@
     display: none;
 }
 
+.navbar__link--panel-visible {
+    display: inline-flex;
+}
+
 .navbar__link--panel:hover {
     background: rgba(255, 255, 255, 0.22);
 }
@@ -182,7 +186,7 @@
     position: fixed;
     top: 130px;
     right: 24px;
-    z-index: 40;
+    z-index: 3000;
     width: min(360px, calc(100vw - 32px));
     overflow: hidden;
     border-radius: 8px;

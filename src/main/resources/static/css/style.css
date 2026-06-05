@@ -19,14 +19,14 @@ body{
 }
 
 button,
-a:not(.navbar__brand),
+a:not(.navbar__brand):not(.city-brand),
 input[type="submit"],
 input[type="button"] {
     transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 button:not(:disabled):hover,
-a:not(.navbar__brand):hover,
+a:not(.navbar__brand):not(.city-brand):hover,
 input[type="submit"]:not(:disabled):hover,
 input[type="button"]:not(:disabled):hover {
     transform: translateY(-1px);
@@ -34,7 +34,7 @@ input[type="button"]:not(:disabled):hover {
 }
 
 button:not(:disabled):active,
-a:active,
+a:not(.navbar__brand):not(.city-brand):active,
 input[type="submit"]:not(:disabled):active,
 input[type="button"]:not(:disabled):active {
     transform: translateY(0);

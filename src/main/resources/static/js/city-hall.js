@@ -1,7 +1,6 @@
 const metricsRoot = document.querySelector("[data-city-metrics]");
 const callList = document.querySelector("[data-city-call-list]");
 const criticalList = document.querySelector("[data-critical-list]");
-const criticalCount = document.querySelector("[data-critical-count]");
 const criticalInlineCount = document.querySelector("[data-critical-inline-count]");
 const visibleCount = document.querySelector("[data-visible-count]");
 const callDetail = document.querySelector("[data-call-detail]");
@@ -12,7 +11,6 @@ const filterButtons = document.querySelectorAll("[data-filter]");
 const statusFilterButtons = document.querySelectorAll("[data-status-filter]");
 const refreshButton = document.querySelector("[data-city-refresh]");
 const logoutButton = document.querySelector("[data-city-logout]");
-const criticalShortcut = document.querySelector("[data-critical-shortcut]");
 
 const defaultLocation = {
     latitude: -21.1775,
@@ -40,11 +38,17 @@ let overviewMarkers = [];
 let detailMap = null;
 let detailMarker = null;
 const reviewCache = new Map();
+const callImageCache = new Map();
+const reviewImageCache = new Map();
 const addressCache = new Map();
 const addressStorageKey = "urbanwatch:prefeitura:addresses";
 const reverseGeocodeDelay = 1100;
 let reverseGeocodeQueue = Promise.resolve();
 let lastReverseGeocodeAt = 0;
+
+function isAdmin() {
+    return String(currentUser?.role || "").toUpperCase() === "ADMIN";
+}
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -163,8 +167,22 @@ function maskPersonName(name) {
     return `${safeName.charAt(0).toUpperCase()}${"*".repeat(Math.max(safeName.length - 1, 3))}`;
 }
 
+function isAuthorityComment(comment) {
+    const userRole = String(comment?.userRole || "").toUpperCase();
+    const userName = String(comment?.userName || "").trim().toLowerCase();
+
+    return Boolean(
+        comment?.isCityHall
+        || userRole === "CITY_HALL"
+        || userRole === "ADMIN"
+        || userName.includes("prefeitura")
+        || userName.includes("admin")
+        || userName.includes("administrador")
+    );
+}
+
 function getCommentAuthor(comment) {
-    if (currentUser && comment.userId === currentUser.id) {
+    if ((currentUser && comment.userId === currentUser.id) || isAuthorityComment(comment)) {
         return "Prefeitura";
     }
 
@@ -533,7 +551,6 @@ function renderMetrics() {
         </article>
     `).join("");
 
-    criticalCount.textContent = String(critical);
     criticalInlineCount.textContent = `${critical} críticos`;
 }
 
@@ -569,7 +586,6 @@ function renderMetrics() {
         </button>
     `).join("");
 
-    criticalCount.textContent = String(critical);
     criticalInlineCount.textContent = `${critical} críticos`;
 }
 
@@ -745,6 +761,90 @@ function renderCallReview(call) {
     if (reviewRoot) {
         reviewRoot.outerHTML = getReviewBlock(call);
     }
+
+    renderAdminPanel(call);
+}
+
+function getAdminImageList(title, items, deleteAttribute) {
+    if (!items.length) {
+        return `
+            <div class="city-admin-list">
+                <h5>${escapeHtml(title)}</h5>
+                <p class="city-admin-empty">Nenhum arquivo anexado.</p>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="city-admin-list">
+            <h5>${escapeHtml(title)}</h5>
+            ${items.map((item) => `
+                <div class="city-admin-item">
+                    <span title="${escapeHtml(item.fileName || "Arquivo")}">${escapeHtml(item.fileName || `Arquivo ${item.id}`)}</span>
+                    <button type="button" class="city-admin-button city-admin-button--danger" ${deleteAttribute}="${escapeHtml(item.id)}">Excluir</button>
+                </div>
+            `).join("")}
+        </div>
+    `;
+}
+
+function getAdminBlock(call) {
+    if (!isAdmin()) {
+        return "";
+    }
+
+    const review = reviewCache.get(String(call.id));
+    const callImages = callImageCache.get(String(call.id)) || [];
+    const reviewImages = reviewImageCache.get(String(call.id)) || [];
+
+    return `
+        <section class="city-admin-panel" data-city-admin-panel>
+            <h4>Administração</h4>
+            <div class="city-admin-actions">
+                <button type="button" class="city-admin-button city-admin-button--danger" data-admin-delete-call="${escapeHtml(call.id)}">Excluir chamado</button>
+                <button type="button" class="city-admin-button city-admin-button--danger" data-admin-delete-review="${escapeHtml(review?.id || "")}" ${review ? "" : "disabled"}>Excluir avaliação</button>
+            </div>
+            ${getAdminImageList("Anexos do chamado", callImages, "data-admin-delete-call-image")}
+            ${getAdminImageList("Anexos da avaliação", reviewImages, "data-admin-delete-review-image")}
+        </section>
+    `;
+}
+
+function renderAdminPanel(call) {
+    const adminRoot = document.querySelector("[data-city-admin-panel]");
+
+    if (!adminRoot || !call) {
+        return;
+    }
+
+    adminRoot.outerHTML = getAdminBlock(call);
+}
+
+async function loadAdminResources(callId) {
+    if (!isAdmin()) {
+        return;
+    }
+
+    const call = calls.find((item) => String(item.id) === String(callId));
+
+    if (!call) {
+        return;
+    }
+
+    try {
+        const [callImagesResponse, reviewImagesResponse] = await Promise.all([
+            UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/images`),
+            UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/review/images`)
+        ]);
+
+        callImageCache.set(String(callId), callImagesResponse.ok ? await callImagesResponse.json() : []);
+        reviewImageCache.set(String(callId), reviewImagesResponse.ok ? await reviewImagesResponse.json() : []);
+    } catch (error) {
+        callImageCache.set(String(callId), []);
+        reviewImageCache.set(String(callId), []);
+    }
+
+    renderAdminPanel(call);
 }
 
 async function loadReview(callId) {
@@ -881,6 +981,8 @@ function renderDetail() {
 
                     ${getReviewBlock(call)}
 
+                    ${getAdminBlock(call)}
+
                     <label class="city-detail-field">
                         <span>Alterar status</span>
                         <select name="status">
@@ -967,8 +1069,10 @@ function renderComments(comments) {
         .reverse()
         .map((comment) => {
             const isMine = currentUser && comment.userId === currentUser.id;
+            const isAuthority = isAuthorityComment(comment);
             return `
-                <article class="city-chat__message ${isMine ? "city-chat__message--mine" : ""}">
+                <article class="city-chat__message ${isMine || isAuthority ? "city-chat__message--mine" : ""} ${isAdmin() ? "city-chat__message--admin-control" : ""}">
+                    ${isAdmin() ? `<button type="button" class="city-chat__delete" data-admin-delete-comment="${escapeHtml(comment.id)}" aria-label="Excluir comentario">X</button>` : ""}
                     <strong>${escapeHtml(getCommentAuthor(comment))} - ${formatDate(comment.createdAt)}</strong>
                     <p>${escapeHtml(comment.content)}</p>
                 </article>
@@ -1046,7 +1150,8 @@ async function openCall(callId) {
     await Promise.all([
         loadComments(callId),
         loadReview(callId),
-        loadHistory(callId)
+        loadHistory(callId),
+        loadAdminResources(callId)
     ]);
 }
 
@@ -1133,6 +1238,30 @@ async function patchJson(url, body) {
     return response.json();
 }
 
+async function deleteRequest(url) {
+    const response = await UrbanWatchAuth.authenticatedFetch(url, {
+        method: "DELETE"
+    });
+
+    if (!response.ok) {
+        throw new Error("Delete failed");
+    }
+}
+
+async function deleteCallComments(callId) {
+    const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/comments`);
+
+    if (!response.ok) {
+        throw new Error("Comments cleanup failed");
+    }
+
+    const comments = await response.json();
+
+    await Promise.all(
+        comments.map((comment) => deleteRequest(`/calls/comments/${comment.id}`))
+    );
+}
+
 async function saveObservation(form) {
     await patchJson(`/calls/${selectedCallId}/prefeitura`, {
         observacao: form.elements.prefeituraObservation.value.trim()
@@ -1152,7 +1281,8 @@ async function saveStatus(form) {
     await Promise.all([
         loadComments(selectedCallId),
         loadReview(selectedCallId),
-        loadHistory(selectedCallId)
+        loadHistory(selectedCallId),
+        loadAdminResources(selectedCallId)
     ]);
 }
 
@@ -1201,6 +1331,112 @@ document.addEventListener("click", async (event) => {
         statusFilterButtons.forEach((item) => item.classList.toggle("city-status-filter--active", item.dataset.statusFilter === activeStatusFilter));
         renderMetrics();
         renderCallList();
+        return;
+    }
+
+    const deleteCallButton = event.target.closest("[data-admin-delete-call]");
+
+    if (deleteCallButton && isAdmin()) {
+        event.preventDefault();
+
+        if (!window.confirm("Excluir este chamado definitivamente?")) {
+            return;
+        }
+
+        try {
+            const callId = deleteCallButton.dataset.adminDeleteCall;
+            await deleteCallComments(callId);
+            await deleteRequest(`/calls/${callId}`);
+            selectedCallId = null;
+            closeModal();
+            UrbanWatchAuth.showAlert("Chamado excluido com sucesso.");
+            await loadCalls();
+        } catch (error) {
+            UrbanWatchAuth.showAlert("Nao foi possivel excluir o chamado agora.");
+        }
+
+        return;
+    }
+
+    const deleteReviewButton = event.target.closest("[data-admin-delete-review]");
+
+    if (deleteReviewButton && isAdmin() && deleteReviewButton.dataset.adminDeleteReview) {
+        event.preventDefault();
+
+        if (!window.confirm("Excluir a avaliacao deste chamado?")) {
+            return;
+        }
+
+        try {
+            await deleteRequest(`/calls/reviews/${deleteReviewButton.dataset.adminDeleteReview}`);
+            reviewCache.delete(String(selectedCallId));
+            UrbanWatchAuth.showAlert("Avaliacao excluida com sucesso.");
+            await loadReview(selectedCallId);
+            await loadAdminResources(selectedCallId);
+        } catch (error) {
+            UrbanWatchAuth.showAlert("Nao foi possivel excluir a avaliacao agora.");
+        }
+
+        return;
+    }
+
+    const deleteCallImageButton = event.target.closest("[data-admin-delete-call-image]");
+
+    if (deleteCallImageButton && isAdmin()) {
+        event.preventDefault();
+
+        if (!window.confirm("Excluir este anexo do chamado?")) {
+            return;
+        }
+
+        try {
+            await deleteRequest(`/calls/images/${deleteCallImageButton.dataset.adminDeleteCallImage}`);
+            UrbanWatchAuth.showAlert("Anexo excluido com sucesso.");
+            await loadAdminResources(selectedCallId);
+        } catch (error) {
+            UrbanWatchAuth.showAlert("Nao foi possivel excluir o anexo agora.");
+        }
+
+        return;
+    }
+
+    const deleteReviewImageButton = event.target.closest("[data-admin-delete-review-image]");
+
+    if (deleteReviewImageButton && isAdmin()) {
+        event.preventDefault();
+
+        if (!window.confirm("Excluir este anexo da avaliacao?")) {
+            return;
+        }
+
+        try {
+            await deleteRequest(`/calls/review/images/${deleteReviewImageButton.dataset.adminDeleteReviewImage}`);
+            UrbanWatchAuth.showAlert("Anexo excluido com sucesso.");
+            await loadAdminResources(selectedCallId);
+        } catch (error) {
+            UrbanWatchAuth.showAlert("Nao foi possivel excluir o anexo agora.");
+        }
+
+        return;
+    }
+
+    const deleteCommentButton = event.target.closest("[data-admin-delete-comment]");
+
+    if (deleteCommentButton && isAdmin()) {
+        event.preventDefault();
+
+        if (!window.confirm("Excluir este comentario?")) {
+            return;
+        }
+
+        try {
+            await deleteRequest(`/calls/comments/${deleteCommentButton.dataset.adminDeleteComment}`);
+            UrbanWatchAuth.showAlert("Comentario excluido com sucesso.");
+            await loadComments(selectedCallId);
+        } catch (error) {
+            UrbanWatchAuth.showAlert("Nao foi possivel excluir o comentario agora.");
+        }
+
         return;
     }
 
@@ -1285,12 +1521,6 @@ document.addEventListener("keydown", async (event) => {
 
 refreshButton.addEventListener("click", loadCalls);
 logoutButton.addEventListener("click", UrbanWatchAuth.logout);
-criticalShortcut.addEventListener("click", () => {
-    activeFilter = "critical";
-    filterButtons.forEach((item) => item.classList.toggle("city-filter--active", item.dataset.filter === "critical"));
-    renderMetrics();
-    renderCallList();
-});
 
 document.addEventListener("DOMContentLoaded", async () => {
     loadStoredAddressCache();

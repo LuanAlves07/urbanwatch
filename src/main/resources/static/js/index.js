@@ -230,6 +230,8 @@ function isCityHallComment(comment) {
         || userRole === "CITY_HALL"
         || userRole === "ADMIN"
         || userName.includes("prefeitura")
+        || userName.includes("admin")
+        || userName.includes("administrador")
     );
 }
 

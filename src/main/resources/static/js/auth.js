@@ -48,6 +48,7 @@ const UrbanWatchAuth = (() => {
         const navbar = document.querySelector(".navbar");
         const loginLink = document.querySelector("[data-auth-link]");
         const loginText = document.querySelector("[data-auth-text]");
+        const panelLink = document.querySelector("[data-panel-link]");
 
         if (!navbar || !loginLink || !loginText) {
             return;
@@ -59,6 +60,10 @@ const UrbanWatchAuth = (() => {
             loginText.textContent = "LOGIN/REGISTRO";
             loginLink.classList.remove("navbar__link--logged");
             navbar.classList.remove("navbar--authenticated");
+            if (panelLink) {
+                panelLink.hidden = true;
+            }
+            panelLink?.classList.remove("navbar__link--panel-visible");
             return;
         }
 
@@ -67,6 +72,10 @@ const UrbanWatchAuth = (() => {
         loginText.textContent = `Olá, ${getFirstName(user.name)}!`;
         loginLink.classList.add("navbar__link--logged");
         navbar.classList.add("navbar--authenticated");
+        if (panelLink) {
+            panelLink.hidden = !["CITY_HALL", "ADMIN"].includes(String(user.role || "").toUpperCase());
+        }
+        panelLink?.classList.toggle("navbar__link--panel-visible", ["CITY_HALL", "ADMIN"].includes(String(user.role || "").toUpperCase()));
     }
 
     async function loadCurrentUser() {

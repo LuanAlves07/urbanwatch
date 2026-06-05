@@ -27,29 +27,35 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 78px;
-    padding: 0 32px;
-    background: #1073e0;
+    width: 100%;
+    height: 110px;
+    min-height: 110px;
+    padding: 0 7%;
+    background: var(--primary-color);
+    border: 2px solid rgba(0, 76, 153, 0.55);
     color: #fff;
-    box-shadow: 0 3px 12px rgba(0, 63, 126, 0.24);
+    box-shadow: 0 2px 5px rgba(0, 63, 126, 0.35);
 }
 
 .city-brand {
     display: inline-flex;
     align-items: center;
-    gap: 14px;
+    height: 100%;
     color: inherit;
     text-decoration: none;
     text-transform: uppercase;
 }
 
 .city-brand img {
-    width: 178px;
-    height: 58px;
+    display: block;
+    width: 240px;
+    max-width: 36vw;
+    height: 86px;
     object-fit: contain;
 }
 
 .city-brand span {
+    margin-left: 28px;
     padding-left: 14px;
     border-left: 1px solid rgba(255, 255, 255, 0.35);
     font-size: 12px;
@@ -60,7 +66,8 @@ body {
 .city-nav {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
+    min-width: 0;
 }
 
 .city-nav button,
@@ -73,37 +80,19 @@ body {
     cursor: pointer;
 }
 
-.city-critical-link,
-.city-menu-button,
+.city-nav-button,
 .city-logout {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 36px;
-    padding: 0 12px;
-    border-radius: 5px;
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
     font-size: 13px;
     font-weight: 800;
-}
-
-.city-critical-link {
-    background: rgba(217, 54, 54, 0.18);
-    color: #fff4f4;
-    font-weight: 900;
-}
-
-.city-critical-link span {
-    display: inline-grid;
-    place-items: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    border-radius: 999px;
-    background: #d93636;
-    font-size: 11px;
-    line-height: 1;
+    white-space: nowrap;
 }
 
 .city-nav strong {
@@ -430,11 +419,26 @@ body {
     text-align: left;
     cursor: pointer;
     overflow: hidden;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .city-call-item--active {
-    border-color: #1073e0;
-    box-shadow: 0 10px 18px rgba(16, 115, 224, 0.14);
+    border-color: #e2e9f1;
+}
+
+.city-call-item:hover {
+    border-color: #cbd9e8;
+    box-shadow: 0 8px 18px rgba(16, 115, 224, 0.12);
+    transform: translateY(-1px);
+}
+
+.city-call-item:focus {
+    outline: none;
+}
+
+.city-call-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(16, 115, 224, 0.18), 0 8px 18px rgba(16, 115, 224, 0.12);
 }
 
 .city-call-item__bar {
@@ -967,12 +971,17 @@ body {
 }
 
 .city-chat__message {
+    position: relative;
     width: fit-content;
     max-width: 92%;
     padding: 9px 11px;
     border-radius: 8px;
     background: #e9edf3;
     color: #20242a;
+}
+
+.city-chat__message--admin-control {
+    padding-right: 30px;
 }
 
 .city-chat__message--mine {
@@ -992,6 +1001,29 @@ body {
     color: inherit;
     font-size: 13px;
     white-space: pre-line;
+}
+
+.city-chat__delete {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(217, 54, 54, 0.12);
+    color: #b72121;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 18px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.city-chat__delete:hover {
+    background: #d93636;
+    color: #fff;
 }
 
 .city-chat__form {
@@ -1113,6 +1145,85 @@ body {
     font-size: 14px;
 }
 
+.city-admin-panel {
+    display: grid;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid #ffd1d1;
+    border-radius: 8px;
+    background: #fff7f7;
+}
+
+.city-admin-panel h4,
+.city-admin-list h5 {
+    margin: 0;
+    color: #ad2929;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.city-admin-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.city-admin-button {
+    min-height: 34px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: #edf0f4;
+    color: #25313d;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.city-admin-button--danger {
+    background: #d93636;
+    color: #fff;
+}
+
+.city-admin-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.city-admin-list {
+    display: grid;
+    gap: 8px;
+}
+
+.city-admin-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid #f1d2d2;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.city-admin-item span {
+    overflow: hidden;
+    color: #263342;
+    font-size: 12px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.city-admin-empty {
+    margin: 0;
+    color: #677482;
+    font-size: 12px;
+}
+
 .city-empty {
     margin: 14px 0 0;
     color: #64717f;
@@ -1120,6 +1231,22 @@ body {
 }
 
 @media (max-width: 1120px) {
+    .city-topbar {
+        padding: 0 32px;
+    }
+
+    .city-brand img {
+        width: 210px;
+    }
+
+    .city-brand span {
+        margin-left: 18px;
+    }
+
+    .city-nav {
+        gap: 10px;
+    }
+
     .city-dashboard {
         grid-template-columns: 1fr;
     }
@@ -1133,13 +1260,30 @@ body {
     .city-topbar {
         align-items: flex-start;
         flex-direction: column;
-        gap: 12px;
-        padding: 14px 18px;
+        height: auto;
+        min-height: 110px;
+        gap: 10px;
+        padding: 12px 18px 14px;
     }
 
     .city-nav {
         flex-wrap: wrap;
         width: 100%;
+    }
+
+    .city-brand {
+        height: auto;
+    }
+
+    .city-brand img {
+        width: 170px;
+        max-width: 58vw;
+        height: 62px;
+    }
+
+    .city-brand span {
+        margin-left: 12px;
+        padding-left: 12px;
     }
 
     .city-dashboard {
