@@ -51,6 +51,20 @@
     cursor: pointer;
 }
 
+.navbar__link--panel {
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.14);
+    font-weight: 700;
+    white-space: nowrap;
+    display: none;
+}
+
+.navbar__link--panel:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
 .navbar__link span:last-child {
     overflow: hidden;
     text-overflow: ellipsis;

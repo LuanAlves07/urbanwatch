@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel da Prefeitura - SOS Urbano</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/fragments.css}">
+    <link rel="stylesheet" th:href="@{/css/city-hall.css}">
+</head>
+<body>
+    <main class="city-page">
+        <header class="city-topbar">
+            <a class="city-brand" th:href="@{/prefeitura}" aria-label="SOS Urbano Prefeitura">
+                <img th:src="@{/images/nav-logo.png}" alt="SOS Urbano">
+                <span>Painel da prefeitura</span>
+            </a>
+
+            <nav class="city-nav" aria-label="Acoes da prefeitura">
+                <button type="button" class="city-critical-link" data-critical-shortcut>
+                    Alertas críticos <span data-critical-count>0</span>
+                </button>
+                <button type="button" class="city-menu-button" data-city-refresh>Atualizar</button>
+                <strong data-city-user>Ola, Prefeitura!</strong>
+                <button type="button" class="city-logout" data-city-logout>Sair</button>
+            </nav>
+        </header>
+
+        <section class="city-dashboard">
+            <div class="city-metrics" data-city-metrics></div>
+
+            <section class="city-card city-card--calls">
+                <header class="city-section-header">
+                    <div>
+                        <p>Chamados abertos</p>
+                        <h1>Gestao de chamados</h1>
+                    </div>
+                    <div class="city-section-badges">
+                        <span data-visible-count>0 chamados</span>
+                        <span class="city-section-badge city-section-badge--critical" data-critical-inline-count>0 críticos</span>
+                    </div>
+                </header>
+
+                <div class="city-toolbar">
+                    <div class="city-filter-bar" role="group" aria-label="Filtros rapidos">
+                        <button type="button" class="city-filter city-filter--active" data-filter="all">Todos</button>
+                        <button type="button" class="city-filter" data-filter="critical">Críticos</button>
+                        <button type="button" class="city-filter" data-filter="urgent">Urgentes</button>
+                        <button type="button" class="city-filter" data-filter="running">Em execução</button>
+                    </div>
+
+                    <label class="city-search">
+                        <span aria-hidden="true">Buscar</span>
+                        <input type="search" data-call-search placeholder="Buscar chamado...">
+                    </label>
+                </div>
+
+                <div class="city-status-filters" role="group" aria-label="Filtros por status">
+                    <button type="button" class="city-status-filter city-status-filter--active" data-status-filter="all">Todos</button>
+                    <button type="button" class="city-status-filter" data-status-filter="PENDENTE">Pendente</button>
+                    <button type="button" class="city-status-filter" data-status-filter="RECEBIDO">Recebido</button>
+                    <button type="button" class="city-status-filter" data-status-filter="EM_AVALIACAO">Em avaliação</button>
+                    <button type="button" class="city-status-filter" data-status-filter="EM_DESLOCAMENTO">Deslocamento</button>
+                    <button type="button" class="city-status-filter" data-status-filter="EM_EXECUCAO">Em execução</button>
+                    <button type="button" class="city-status-filter" data-status-filter="PAUSADO">Pausado</button>
+                    <button type="button" class="city-status-filter" data-status-filter="FINALIZADO">Finalizado</button>
+                </div>
+
+                <div class="city-legend" aria-label="Legenda SLA">
+                    <span><i class="city-dot city-dot--green"></i>0-1 dia</span>
+                    <span><i class="city-dot city-dot--yellow"></i>5 dias</span>
+                    <span><i class="city-dot city-dot--orange"></i>10 dias</span>
+                    <span><i class="city-dot city-dot--red"></i>15+ dias</span>
+                </div>
+
+                <div class="city-call-list" data-city-call-list>
+                    <p class="city-empty">Carregando chamados...</p>
+                </div>
+            </section>
+
+            <aside class="city-side">
+                <section class="city-card city-critical-panel">
+                    <h2>Alertas críticos ativos</h2>
+                    <div data-critical-list></div>
+                </section>
+
+                <section class="city-card">
+                    <h2>Mapa dos chamados</h2>
+                    <div id="cityOverviewMap" class="city-overview-map"></div>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <div class="city-modal" data-city-modal hidden>
+        <div class="city-modal__backdrop" data-city-modal-close></div>
+        <section class="city-modal__panel" aria-label="Detalhes do chamado">
+            <button type="button" class="city-modal__close" data-city-modal-close aria-label="Fechar">X</button>
+            <div data-call-detail>
+                <p class="city-empty">Selecione um chamado para alterar status, pausar ou registrar observação.</p>
+            </div>
+        </section>
+    </div>
+
+    <script th:src="@{/js/auth.js}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+    <script th:src="@{/js/city-hall.js}"></script>
+</body>
+</html>

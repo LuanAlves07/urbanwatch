@@ -22,6 +22,16 @@ const chatFilePreview = document.querySelector("[data-chat-file-preview]");
 const callActions = document.querySelector("[data-call-actions]");
 const reviewButton = document.querySelector("[data-review-button]");
 const editCallButton = document.querySelector("[data-edit-call-button]");
+const reviewForm = document.querySelector("[data-review-form]");
+const reviewRatingInput = document.querySelector("[data-review-rating]");
+const reviewFileInput = document.querySelector("[data-review-file]");
+const reviewFilePreview = document.querySelector("[data-review-file-preview]");
+const reviewStars = document.querySelectorAll("[data-review-star]");
+const reviewSummary = document.querySelector("[data-review-summary]");
+const callHistory = document.querySelector("[data-call-history]");
+const createdByRow = document.querySelector("[data-created-by-row]");
+const createdAtRow = document.querySelector("[data-created-at-row]");
+const myCallInfo = document.querySelector(".my-call-info");
 
 const defaultLocation = {
     latitude: -21.1775,
@@ -42,8 +52,18 @@ let userLocation = null;
 let userLocationMarker = null;
 let selectedUploadFiles = [];
 let selectedChatFile = null;
+let selectedReviewFile = null;
 let editingCallId = null;
+const reviewCache = new Map();
 const addressCache = new Map();
+const addressStorageKey = "urbanwatch:client:addresses";
+const reverseGeocodeDelay = 1100;
+let reverseGeocodeQueue = Promise.resolve();
+let lastReverseGeocodeAt = 0;
+const allowedAttachmentTypes = ["image/png", "image/jpeg", "video/mp4"];
+const maxAttachmentSize = 10 * 1024 * 1024;
+const allowedReviewTypes = ["image/png", "image/jpeg"];
+const maxReviewSize = 5 * 1024 * 1024;
 
 function normalizeCep(value) {
     return value.replace(/\D/g, "").replace(/^(\d{5})(\d{0,3}).*/, (_, start, end) => end ? `${start}-${end}` : start);
@@ -88,6 +108,72 @@ function formatStatus(status) {
     return String(status || "PENDENTE").replaceAll("_", " ");
 }
 
+function getAllowedStatusLabel(status) {
+    const labels = {
+        PENDENTE: "Pendente",
+        RECEBIDO: "Recebido",
+        EM_AVALIACAO: "Em avaliação",
+        EM_DESLOCAMENTO: "Em deslocamento",
+        EM_EXECUCAO: "Em execução",
+        FINALIZADO: "Finalizado",
+        PAUSADO: "Pausado"
+    };
+
+    return labels[status] || formatStatus(status);
+}
+
+function getHistoryStatusLabel(status) {
+    return status ? getAllowedStatusLabel(status) : "Criado";
+}
+
+function getSlaInfo(call) {
+    const inactiveStatuses = ["FINALIZADO", "PAUSADO"];
+
+    if (inactiveStatuses.includes(call.status)) {
+        return { level: "neutral", label: call.status === "FINALIZADO" ? "Encerrado" : "Pausado" };
+    }
+
+    const openedAt = new Date(call.createdAt || call.updatedAt || Date.now());
+    const ageDays = Math.max(0, Math.floor((Date.now() - openedAt.getTime()) / 86400000));
+
+    if (ageDays >= 15) {
+        return { level: "red", label: "SLA vermelho" };
+    }
+
+    if (ageDays >= 10) {
+        return { level: "orange", label: "SLA laranja" };
+    }
+
+    if (ageDays >= 5) {
+        return { level: "yellow", label: "SLA amarelo" };
+    }
+
+    return { level: "green", label: "SLA verde" };
+}
+
+function getSlaColor(level) {
+    const colors = {
+        green: "#68b86b",
+        yellow: "#f5c542",
+        orange: "#ef8a2c",
+        red: "#d93636",
+        neutral: "#8b95a3"
+    };
+
+    return colors[level] || colors.neutral;
+}
+
+function sortCallsForClient(a, b) {
+    const aFinished = isCallFinished(a);
+    const bFinished = isCallFinished(b);
+
+    if (aFinished !== bFinished) {
+        return aFinished ? 1 : -1;
+    }
+
+    return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+}
+
 function escapeHtml(value) {
     return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -95,6 +181,75 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+}
+
+function validateFile(file, options = {}) {
+    const allowedTypes = options.allowedTypes || allowedAttachmentTypes;
+    const maxSize = options.maxSize || maxAttachmentSize;
+    const label = options.label || "arquivo";
+    const allowedLabel = options.allowedLabel || "PNG, JPG ou MP4";
+
+    if (!allowedTypes.includes(file.type)) {
+        return `${file.name}: envie apenas ${allowedLabel}.`;
+    }
+
+    if (file.size > maxSize) {
+        return `${file.name}: ${label} deve ter no máximo ${Math.round(maxSize / 1024 / 1024)} MB.`;
+    }
+
+    return null;
+}
+
+function filterValidFiles(files, options = {}) {
+    const validFiles = [];
+    const errors = [];
+
+    files.forEach((file) => {
+        const error = validateFile(file, options);
+
+        if (error) {
+            errors.push(error);
+        } else {
+            validFiles.push(file);
+        }
+    });
+
+    if (errors.length) {
+        UrbanWatchAuth.showAlert(errors.join("\n"));
+    }
+
+    return validFiles;
+}
+
+function isCityHallComment(comment) {
+    const userRole = String(comment?.userRole || "").toUpperCase();
+    const userName = String(comment?.userName || "").trim().toLowerCase();
+
+    return Boolean(
+        comment?.isCityHall
+        || userRole === "CITY_HALL"
+        || userRole === "ADMIN"
+        || userName.includes("prefeitura")
+    );
+}
+
+function maskPersonName(name) {
+    const safeName = String(name || "").trim();
+
+    if (!safeName) {
+        return "Cidadao";
+    }
+
+    const firstLetter = safeName.charAt(0).toUpperCase();
+    return `${firstLetter}${"*".repeat(Math.max(safeName.length - 1, 3))}`;
+}
+
+function getVisibleCommentAuthor(comment) {
+    if (isCityHallComment(comment)) {
+        return "Prefeitura";
+    }
+
+    return maskPersonName(comment.userName);
 }
 
 function describePlace(call) {
@@ -215,12 +370,19 @@ function updateHomeMap() {
     homeMarkers.forEach((marker) => marker.remove());
     homeMarkers = [];
 
-    const callsWithCoords = calls.filter((call) => call.latitude && call.longitude);
+    const callsWithCoords = calls.filter((call) => call.latitude && call.longitude && !isCallFinished(call));
 
     callsWithCoords.forEach((call) => {
-        const marker = L.marker([call.latitude, call.longitude])
+        const slaInfo = getSlaInfo(call);
+        const marker = L.circleMarker([call.latitude, call.longitude], {
+            radius: 9,
+            color: getSlaColor(slaInfo.level),
+            fillColor: getSlaColor(slaInfo.level),
+            fillOpacity: 0.62,
+            weight: 3
+        })
             .addTo(homeMap)
-            .bindPopup(escapeHtml(call.title || "Alerta"));
+            .bindPopup(`${escapeHtml(call.title || "Alerta")}<br>${escapeHtml(slaInfo.label)}`);
 
         marker.on("click", () => openCallDetails(call.id));
         homeMarkers.push(marker);
@@ -286,6 +448,20 @@ async function fetchNominatimReverse(latitude, longitude) {
     return response.json();
 }
 
+async function fetchBackendReverse(latitude, longitude) {
+    const url = new URL("/location/reverse", window.location.origin);
+    url.searchParams.set("latitude", latitude);
+    url.searchParams.set("longitude", longitude);
+
+    const response = await UrbanWatchAuth.authenticatedFetch(url.pathname + url.search);
+
+    if (!response.ok) {
+        throw new Error("Reverse geocode failed");
+    }
+
+    return response.json();
+}
+
 function formatNominatimAddress(result, fallback) {
     const address = result.address || {};
     const parts = [
@@ -300,23 +476,133 @@ function formatNominatimAddress(result, fallback) {
     return parts.length ? parts.join(", ") : result.display_name || fallback;
 }
 
-async function getCallAddress(call) {
+function formatBackendAddress(result) {
+    if (result?.endereco) {
+        return result.endereco;
+    }
+
+    return [result?.bairro, result?.cidade, result?.estado, result?.pais].filter(Boolean).join(", ");
+}
+
+function getAddressKey(call) {
+    if (!call?.latitude || !call?.longitude) {
+        return null;
+    }
+
+    return `${Number(call.latitude).toFixed(6)},${Number(call.longitude).toFixed(6)}`;
+}
+
+function isUsableAddress(address) {
+    return Boolean(address)
+        && address !== "Endereco nao encontrado"
+        && address !== "Endereco nao informado"
+        && address !== "Endereco sendo localizado...";
+}
+
+function loadStoredAddressCache() {
+    try {
+        const stored = JSON.parse(localStorage.getItem(addressStorageKey) || "{}");
+
+        Object.entries(stored).forEach(([key, value]) => {
+            const address = typeof value === "string" ? value : value?.address;
+
+            if (isUsableAddress(address)) {
+                addressCache.set(key, address);
+            }
+        });
+    } catch (error) {
+        localStorage.removeItem(addressStorageKey);
+    }
+}
+
+function persistStoredAddressCache(validKeys = null) {
+    const stored = {};
+
+    addressCache.forEach((address, key) => {
+        if ((!validKeys || validKeys.has(key)) && isUsableAddress(address)) {
+            stored[key] = {
+                address,
+                updatedAt: new Date().toISOString()
+            };
+        }
+    });
+
+    localStorage.setItem(addressStorageKey, JSON.stringify(stored));
+}
+
+function pruneStoredAddressCache() {
+    const validKeys = new Set(calls.map(getAddressKey).filter(Boolean));
+
+    Array.from(addressCache.keys()).forEach((key) => {
+        if (!validKeys.has(key)) {
+            addressCache.delete(key);
+        }
+    });
+
+    persistStoredAddressCache(validKeys);
+}
+
+function delay(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function enqueueReverseGeocode(task) {
+    const run = reverseGeocodeQueue.catch(() => {}).then(async () => {
+        const elapsed = Date.now() - lastReverseGeocodeAt;
+
+        if (elapsed < reverseGeocodeDelay) {
+            await delay(reverseGeocodeDelay - elapsed);
+        }
+
+        const result = await task();
+        lastReverseGeocodeAt = Date.now();
+        return result;
+    });
+
+    reverseGeocodeQueue = run.catch(() => {});
+    return run;
+}
+
+function applyStoredAddressesToCalls() {
+    let changed = false;
+
+    calls.forEach((call) => {
+        const key = getAddressKey(call);
+
+        if (key && addressCache.has(key)) {
+            call.visualAddress = addressCache.get(key);
+            changed = true;
+        }
+    });
+
+    return changed;
+}
+
+async function getCallAddress(call, options = {}) {
     if (!call.latitude || !call.longitude) {
         return "Endereco nao informado";
     }
 
-    const key = `${call.latitude},${call.longitude}`;
+    const key = getAddressKey(call);
 
-    if (addressCache.has(key)) {
+    if (!options.force && addressCache.has(key)) {
         return addressCache.get(key);
     }
 
     try {
-        const result = await fetchNominatimReverse(call.latitude, call.longitude);
-        const address = formatNominatimAddress(result, "Endereco nao encontrado");
+        const result = await enqueueReverseGeocode(() => fetchBackendReverse(call.latitude, call.longitude));
+        const address = formatBackendAddress(result);
+
+        if (!isUsableAddress(address)) {
+            throw new Error("Empty address");
+        }
+
         addressCache.set(key, address);
+        persistStoredAddressCache();
         return address;
     } catch (error) {
+        addressCache.delete(key);
+        persistStoredAddressCache();
         return "Endereco nao encontrado";
     }
 }
@@ -324,11 +610,40 @@ async function getCallAddress(call) {
 async function enrichCallAddresses() {
     const callsWithCoords = calls.filter((call) => call.latitude && call.longitude);
 
+    pruneStoredAddressCache();
+    applyStoredAddressesToCalls();
+    renderCalls();
+
     for (const call of callsWithCoords) {
         if (!call.visualAddress) {
             call.visualAddress = await getCallAddress(call);
             renderCalls();
         }
+    }
+}
+
+async function refreshCallAddress(callId) {
+    const call = calls.find((item) => String(item.id) === String(callId));
+
+    if (!call) {
+        return;
+    }
+
+    call.visualAddress = "Endereco sendo localizado...";
+    renderCalls();
+
+    if (selectedCall && String(selectedCall.id) === String(call.id)) {
+        document.querySelector("[data-my-address]").textContent = call.visualAddress;
+        modal.querySelector("[data-modal-address]").textContent = call.visualAddress;
+    }
+
+    call.visualAddress = await getCallAddress(call, { force: true });
+    renderCalls();
+
+    if (selectedCall && String(selectedCall.id) === String(call.id)) {
+        selectedCall.visualAddress = call.visualAddress;
+        document.querySelector("[data-my-address]").textContent = call.visualAddress;
+        modal.querySelector("[data-modal-address]").textContent = call.visualAddress;
     }
 }
 
@@ -444,33 +759,80 @@ function setActiveTab(nextTab) {
     renderCalls();
 }
 
+function renderCallCard(call) {
+    return `
+        <div role="button" tabindex="0" class="alert-card alert-card--sla-${getSlaInfo(call).level}" data-call-id="${call.id}">
+            <span class="alert-card__body">
+                <span class="alert-card__meta">
+                    <span>${escapeHtml(getAllowedStatusLabel(call.status))} | ${escapeHtml(describePlace(call))}</span>
+                    <span>Atualizado ${formatDate(call.updatedAt || call.createdAt)}</span>
+                </span>
+                <span class="alert-card__title">${escapeHtml(call.title)}</span>
+                <span class="alert-card__sla">${escapeHtml(getSlaInfo(call).label)}</span>
+            </span>
+            <span class="alert-card__tools">
+                <button type="button" class="alert-card__refresh" data-refresh-address="${call.id}" title="Atualizar endereço" aria-label="Atualizar endereço">
+                    <img src="../images/icos/refresh.svg" alt="">
+                </button>
+                <span class="alert-card__icon" aria-hidden="true">
+                    <img src="../images/icos/search.png" alt="">
+                </span>
+            </span>
+        </div>
+    `;
+}
+
+function renderCallSection(title, sectionCalls) {
+    if (!sectionCalls.length) {
+        return "";
+    }
+
+    return `
+        <section class="alert-section">
+            <h3>${escapeHtml(title)}</h3>
+            ${sectionCalls.map(renderCallCard).join("")}
+        </section>
+    `;
+}
+
 function renderCalls() {
-    const visibleCalls = activeTab === "mine" && currentUser
-        ? calls.filter((call) => call.userId === currentUser.id)
-        : calls;
+    if (activeTab === "mine" && currentUser) {
+        const mineCalls = calls.filter((call) => call.userId === currentUser.id);
+
+        if (!mineCalls.length) {
+            alertList.innerHTML = '<p class="alert-empty">Voce ainda nao criou alertas.</p>';
+            return;
+        }
+
+        const openCalls = mineCalls
+            .filter((call) => !isCallFinished(call))
+            .sort(sortCallsForClient);
+        const pendingReview = mineCalls
+            .filter((call) => isCallFinished(call) && !reviewCache.get(String(call.id)))
+            .sort(sortCallsForClient);
+        const reviewed = mineCalls
+            .filter((call) => isCallFinished(call) && reviewCache.get(String(call.id)))
+            .sort(sortCallsForClient);
+
+        alertList.innerHTML = [
+            renderCallSection("Em aberto", openCalls),
+            renderCallSection("A avaliar", pendingReview),
+            renderCallSection("Finalizados", reviewed)
+        ].join("") || '<p class="alert-empty">Nenhum alerta encontrado.</p>';
+        return;
+    }
+
+    const visibleCalls = calls.filter((call) => !isCallFinished(call));
 
     if (!visibleCalls.length) {
-        alertList.innerHTML = `<p class="alert-empty">${activeTab === "mine" ? "Voce ainda nao criou alertas." : "Nenhum alerta encontrado."}</p>`;
+        alertList.innerHTML = '<p class="alert-empty">Nenhum alerta encontrado.</p>';
         return;
     }
 
     alertList.innerHTML = visibleCalls
         .slice()
-        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
-        .map((call) => `
-            <button type="button" class="alert-card" data-call-id="${call.id}">
-                <span class="alert-card__body">
-                    <span class="alert-card__meta">
-                        <span>${escapeHtml(formatStatus(call.status))} | ${escapeHtml(describePlace(call))}</span>
-                        <span>Atualizado ${formatDate(call.updatedAt || call.createdAt)}</span>
-                    </span>
-                    <span class="alert-card__title">${escapeHtml(call.title)}</span>
-                </span>
-                <div class="alert-card__icon">
-                    <img src="../images/icos/search.png"></img>
-                </div>
-            </button>
-        `)
+        .sort(sortCallsForClient)
+        .map(renderCallCard)
         .join("");
 }
 
@@ -484,6 +846,9 @@ async function loadCalls() {
         }
 
         calls = await response.json();
+        pruneStoredAddressCache();
+        applyStoredAddressesToCalls();
+        await preloadFinishedReviews();
         renderCalls();
         updateHomeMap();
         enrichCallAddresses();
@@ -647,7 +1012,7 @@ async function submitAlert(event) {
 }
 
 function shouldShowChat(call) {
-    return Boolean(currentUser && activeTab === "mine" && call.userId === currentUser.id);
+    return Boolean(currentUser);
 }
 
 function isCallFinished(call) {
@@ -665,14 +1030,204 @@ function renderComments(comments) {
         .reverse()
         .map((comment) => {
             const isMine = currentUser && comment.userId === currentUser.id;
+            const isCityHall = isCityHallComment(comment);
             return `
-                <article class="chat-message ${isMine ? "" : "chat-message--other"}">
-                    <strong>${escapeHtml(comment.userName || "Usuario")} - ${formatDate(comment.createdAt)}</strong>
+                <article class="chat-message ${isMine ? "chat-message--mine" : "chat-message--other"} ${isCityHall ? "chat-message--city-hall" : ""}">
+                    <strong>${escapeHtml(getVisibleCommentAuthor(comment))} - ${formatDate(comment.createdAt)}</strong>
                     <p>${escapeHtml(comment.content)}</p>
                 </article>
             `;
         })
         .join("");
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function renderCallHistory(historyItems) {
+    if (!callHistory) {
+        return;
+    }
+
+    if (!historyItems.length) {
+        callHistory.hidden = false;
+        callHistory.innerHTML = `
+            <h3>Historico do chamado</h3>
+            <p class="call-history__empty">Nenhuma mudanca de status registrada ainda.</p>
+        `;
+        return;
+    }
+
+    callHistory.hidden = false;
+    callHistory.innerHTML = `
+        <h3>Historico do chamado</h3>
+        <ol>
+            ${historyItems.map((item) => `
+                <li>
+                    <strong>${escapeHtml(getHistoryStatusLabel(item.statusAnterior))} -> ${escapeHtml(getHistoryStatusLabel(item.statusNovo))}</strong>
+                    <time>${escapeHtml(formatFullDate(item.dataAlteracao))}</time>
+                    ${item.observacao ? `<p>${escapeHtml(item.observacao)}</p>` : ""}
+                </li>
+            `).join("")}
+        </ol>
+    `;
+}
+
+async function loadCallHistory(callId) {
+    if (!callHistory) {
+        return;
+    }
+
+    callHistory.hidden = false;
+    callHistory.innerHTML = `
+        <h3>Historico do chamado</h3>
+        <p class="call-history__empty">Carregando historico...</p>
+    `;
+
+    try {
+        const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/historico`);
+
+        if (!response.ok) {
+            throw new Error("History failed");
+        }
+
+        renderCallHistory(await response.json());
+    } catch (error) {
+        callHistory.innerHTML = `
+            <h3>Historico do chamado</h3>
+            <p class="call-history__empty">Historico indisponivel agora.</p>
+        `;
+    }
+}
+
+function setReviewRating(rating) {
+    reviewRatingInput.value = String(rating);
+    reviewStars.forEach((button) => {
+        button.classList.toggle("review-star--active", Number(button.dataset.reviewStar) === Number(rating));
+    });
+}
+
+function renderReviewSummary(call) {
+    const review = reviewCache.get(String(call.id));
+
+    if (!review || !reviewSummary) {
+        if (reviewSummary) {
+            reviewSummary.hidden = true;
+            reviewSummary.innerHTML = "";
+        }
+        return;
+    }
+
+    reviewSummary.hidden = false;
+    reviewSummary.innerHTML = `
+        <span>Avaliação do cidadão</span>
+        <strong>Nota ${escapeHtml(review.rating)}/5</strong>
+        <p>${escapeHtml(review.comment || "Sem comentário.")}</p>
+        <small>${escapeHtml(review.userName || "Cidadão")} - ${formatDate(review.createdAt)}</small>
+    `;
+}
+
+function syncCallActionsVisibility() {
+    if (!callActions) {
+        return;
+    }
+
+    const hasVisibleAction = [reviewButton, editCallButton].some((button) => button && !button.hidden);
+    callActions.hidden = !hasVisibleAction;
+}
+
+function updateReviewState(call) {
+    const review = reviewCache.get(String(call.id));
+    const hasReview = Boolean(review);
+
+    if (hasReview) {
+        resetReviewForm();
+    }
+
+    syncCallActionsVisibility();
+    renderReviewSummary(call);
+}
+
+async function loadReview(callId) {
+    const call = calls.find((item) => String(item.id) === String(callId)) || selectedCall;
+
+    if (!call) {
+        return;
+    }
+
+    try {
+        const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/review`);
+
+        if (response.status === 404) {
+            reviewCache.set(String(callId), null);
+            updateReviewState(call);
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error("Review failed");
+        }
+
+        reviewCache.set(String(callId), await response.json());
+        updateReviewState(call);
+    } catch (error) {
+        reviewCache.set(String(callId), null);
+        updateReviewState(call);
+    }
+}
+
+async function preloadFinishedReviews() {
+    if (!currentUser) {
+        return;
+    }
+
+    const finishedMine = calls.filter((call) => (
+        call.userId === currentUser.id
+        && isCallFinished(call)
+        && !reviewCache.has(String(call.id))
+    ));
+
+    await Promise.all(finishedMine.map(async (call) => {
+        try {
+            const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${call.id}/review`);
+
+            if (response.ok) {
+                reviewCache.set(String(call.id), await response.json());
+                return;
+            }
+        } catch (error) {
+            // Mantem o chamado em "A avaliar" quando a avaliacao nao estiver acessivel.
+        }
+
+        reviewCache.set(String(call.id), null);
+    }));
+}
+
+function resetReviewForm() {
+    reviewForm.hidden = true;
+    reviewForm.reset();
+    selectedReviewFile = null;
+    reviewFileInput.value = "";
+    reviewFilePreview.hidden = true;
+    reviewFilePreview.textContent = "";
+    setReviewRating(5);
+}
+
+async function uploadReviewFile(callId) {
+    if (!selectedReviewFile) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedReviewFile);
+
+    const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/review/images`, {
+        method: "POST",
+        body: formData
+    });
+
+    if (!response.ok) {
+        throw new Error("Review image upload failed");
+    }
 }
 
 function renderChatFilePreview() {
@@ -740,25 +1295,44 @@ async function openCallDetails(callId) {
     modal.hidden = false;
 
     if (showChat) {
+        const isOwner = Boolean(currentUser && call.userId === currentUser.id);
         document.querySelector("[data-my-title]").textContent = call.title;
-        document.querySelector("[data-my-status]").textContent = formatStatus(call.status);
+        document.querySelector("[data-my-status]").textContent = getAllowedStatusLabel(call.status);
         document.querySelector("[data-my-updated]").textContent = `Atualizado ${formatFullDate(call.updatedAt || call.createdAt)}`;
         document.querySelector("[data-my-address]").textContent = describePlace(call);
         document.querySelector("[data-my-code]").textContent = `Cod: ALERTA-${call.id}`;
         document.querySelector("[data-my-user]").textContent = call.userName || "Cidadao";
         document.querySelector("[data-my-created]").textContent = formatFullDate(call.createdAt);
-        reviewButton.disabled = !isCallFinished(call);
+        if (createdByRow) {
+            createdByRow.hidden = activeTab === "general" || !isOwner;
+        }
+        if (createdAtRow) {
+            createdAtRow.classList.toggle("my-call-info__row--only", activeTab === "general" || !isOwner);
+        }
+        if (myCallInfo) {
+            myCallInfo.classList.toggle("my-call-info--compact", activeTab === "general" || !isOwner);
+        }
+        reviewButton.hidden = !isOwner;
+        reviewButton.disabled = !isOwner || !isCallFinished(call);
+        reviewButton.classList.toggle("call-action--review-ready", isOwner && isCallFinished(call));
         reviewButton.title = isCallFinished(call) ? "Avaliar chamado" : "Disponivel apos o encerramento do chamado";
-        editCallButton.disabled = isCallFinished(call);
+        editCallButton.hidden = call.userId !== currentUser.id;
+        editCallButton.disabled = call.userId !== currentUser.id || isCallFinished(call);
         editCallButton.title = isCallFinished(call) ? "Alerta ja encerrado" : "Editar alerta";
+        resetReviewForm();
+        updateReviewState(call);
         selectedChatFile = null;
         if (chatFileInput) {
             chatFileInput.value = "";
         }
         renderChatFilePreview();
-        await loadComments(call.id);
+        await Promise.all([
+            loadComments(call.id),
+            loadReview(call.id),
+            loadCallHistory(call.id)
+        ]);
     } else {
-        modal.querySelector("[data-modal-status]").textContent = `${formatStatus(call.status)} | ${call.userName || "Cidadao"}`;
+        modal.querySelector("[data-modal-status]").textContent = `${getAllowedStatusLabel(call.status)} | ${call.userName || "Cidadao"}`;
         modal.querySelector("[data-modal-title]").textContent = call.title;
         modal.querySelector("[data-modal-description]").textContent = call.description;
         modal.querySelector("[data-modal-address]").textContent = describePlace(call);
@@ -789,7 +1363,12 @@ alertCep.addEventListener("input", (event) => {
 alertCep.addEventListener("blur", () => resolveLocation(alertCep.value));
 
 fileInput.addEventListener("change", () => {
-    selectedUploadFiles = Array.from(fileInput.files || []).slice(0, 4);
+    selectedUploadFiles = filterValidFiles(Array.from(fileInput.files || []), {
+        allowedTypes: allowedAttachmentTypes,
+        maxSize: maxAttachmentSize,
+        label: "anexo",
+        allowedLabel: "PNG, JPG ou MP4"
+    }).slice(0, 4);
     renderUploadList();
 });
 
@@ -847,7 +1426,18 @@ chatForm.addEventListener("submit", async (event) => {
 });
 
 chatFileInput?.addEventListener("change", () => {
-    selectedChatFile = chatFileInput.files?.[0] || null;
+    const [file] = filterValidFiles(Array.from(chatFileInput.files || []), {
+        allowedTypes: allowedAttachmentTypes,
+        maxSize: maxAttachmentSize,
+        label: "anexo",
+        allowedLabel: "PNG, JPG ou MP4"
+    });
+    selectedChatFile = file || null;
+
+    if (!selectedChatFile) {
+        chatFileInput.value = "";
+    }
+
     renderChatFilePreview();
 });
 
@@ -876,6 +1466,15 @@ tabButtons.forEach((button) => {
 });
 
 alertList.addEventListener("click", (event) => {
+    const refreshButton = event.target.closest("[data-refresh-address]");
+
+    if (refreshButton) {
+        event.stopPropagation();
+        refreshCallAddress(refreshButton.dataset.refreshAddress)
+            .catch(() => UrbanWatchAuth.showAlert("Nao foi possivel atualizar o endereco agora."));
+        return;
+    }
+
     const card = event.target.closest("[data-call-id]");
 
     if (card) {
@@ -883,8 +1482,23 @@ alertList.addEventListener("click", (event) => {
     }
 });
 
+alertList.addEventListener("keydown", (event) => {
+    if ((event.key !== "Enter" && event.key !== " ") || !event.target.matches("[data-call-id]")) {
+        return;
+    }
+
+    event.preventDefault();
+    openCallDetails(event.target.dataset.callId);
+});
+
 modal.querySelector("[data-modal-close]").addEventListener("click", () => {
     modal.hidden = true;
+});
+
+modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+        modal.hidden = true;
+    }
 });
 
 reviewButton.addEventListener("click", () => {
@@ -893,7 +1507,7 @@ reviewButton.addEventListener("click", () => {
         return;
     }
 
-    UrbanWatchAuth.showAlert("Fluxo de avaliacao ainda nao foi conectado nesta tela.");
+    reviewForm.hidden = !reviewForm.hidden;
 });
 
 editCallButton?.addEventListener("click", () => {
@@ -904,7 +1518,71 @@ editCallButton?.addEventListener("click", () => {
     openEditView(selectedCall);
 });
 
+reviewStars.forEach((button) => {
+    button.addEventListener("click", () => {
+        setReviewRating(Number(button.dataset.reviewStar));
+    });
+});
+
+reviewFileInput?.addEventListener("change", () => {
+    const [file] = filterValidFiles(Array.from(reviewFileInput.files || []), {
+        allowedTypes: allowedReviewTypes,
+        maxSize: maxReviewSize,
+        label: "imagem da avaliação",
+        allowedLabel: "PNG ou JPG"
+    });
+    selectedReviewFile = file || null;
+
+    if (!selectedReviewFile) {
+        reviewFileInput.value = "";
+    }
+
+    reviewFilePreview.hidden = !selectedReviewFile;
+    reviewFilePreview.textContent = selectedReviewFile ? selectedReviewFile.name : "";
+});
+
+reviewForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!selectedCall || !isCallFinished(selectedCall)) {
+        UrbanWatchAuth.showAlert("A avaliacao fica disponivel apenas apos o encerramento do chamado.");
+        return;
+    }
+
+    const formData = new FormData(reviewForm);
+    const comment = String(formData.get("comment") || "").trim();
+
+    try {
+        const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${selectedCall.id}/review`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                rating: Number(reviewRatingInput.value),
+                comment
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || "Review failed");
+        }
+
+        const review = await response.json();
+        await uploadReviewFile(selectedCall.id);
+        reviewCache.set(String(selectedCall.id), review);
+        resetReviewForm();
+        updateReviewState(selectedCall);
+        renderCalls();
+        UrbanWatchAuth.showAlert("Avaliacao enviada com sucesso.");
+    } catch (error) {
+        UrbanWatchAuth.showAlert(error.message || "Nao foi possivel enviar a avaliacao agora.");
+    }
+});
+
 document.addEventListener("DOMContentLoaded", async () => {
+    loadStoredAddressCache();
     initMaps();
     requestUserLocation();
     currentUser = await UrbanWatchAuth.loadCurrentUser();

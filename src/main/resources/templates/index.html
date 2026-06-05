@@ -73,7 +73,7 @@
                         <span>Anexo</span>
                         <div class="upload-layout">
                             <label class="upload-drop">
-                                <input id="alertFiles" name="files" type="file" accept="image/*,video/*" multiple>
+                                <input id="alertFiles" name="files" type="file" accept="image/png,image/jpeg,video/mp4" multiple>
                                 <span class="upload-files-ico">IMG</span>
                                 <span class="upload-files-desc">Clique para adicionar arquivos</span>
                             </label>
@@ -126,30 +126,60 @@
                     </div>
                 </header>
 
+                <div class="my-call-side">
                 <div class="my-call-info">
                     <dl>
-                        <div>
+                        <div data-created-by-row>
                             <dt>Criado por:</dt>
                             <dd data-my-user></dd>
                         </div>
-                        <div>
+                        <div data-created-at-row>
                             <dt>Criado em:</dt>
                             <dd data-my-created></dd>
                         </div>
                     </dl>
                 </div>
 
+                <section class="call-history" data-call-history hidden></section>
+
                 <div class="call-actions" data-call-actions>
-                    <button type="button" class="call-action">Notificar urgencia</button>
                     <button type="button" class="call-action" data-review-button>Avaliar</button>
                     <button type="button" class="call-action call-action--edit" data-edit-call-button>Editar</button>
                 </div>
 
+                <form class="review-form" data-review-form hidden>
+                    <h3>Avaliar atendimento</h3>
+                    <input type="hidden" name="rating" value="5" data-review-rating>
+                    <div class="review-stars" role="group" aria-label="Nota da avaliação">
+                        <button type="button" class="review-star" data-review-star="0">0</button>
+                        <button type="button" class="review-star" data-review-star="1">1</button>
+                        <button type="button" class="review-star" data-review-star="2">2</button>
+                        <button type="button" class="review-star" data-review-star="3">3</button>
+                        <button type="button" class="review-star" data-review-star="4">4</button>
+                        <button type="button" class="review-star review-star--active" data-review-star="5">5</button>
+                    </div>
+                    <label class="review-comment">
+                        <span>Comentário</span>
+                        <textarea name="comment" maxlength="100" placeholder="Digite sua avaliação"></textarea>
+                        <small>Máx 100 caracteres</small>
+                    </label>
+                    <label class="review-file">
+                        <input type="file" accept="image/png,image/jpeg" data-review-file hidden>
+                        Anexar imagem
+                    </label>
+                    <div class="review-file-preview" data-review-file-preview hidden></div>
+                    <button type="submit" class="review-submit">Enviar avaliação</button>
+                </form>
+
+                <section class="review-summary" data-review-summary hidden></section>
+                </div>
+
                 <section class="call-chat" data-call-chat>
+                    <h3>Comentários do chamado</h3>
                     <div class="call-chat__messages" data-chat-messages></div>
                     <form class="call-chat__form" data-chat-form>
                         <label class="chat-attach">
-                            <input type="file" accept="image/*,video/*" data-chat-file hidden>
+                            <input type="file" accept="image/png,image/jpeg,video/mp4" data-chat-file hidden>
                             Anexar arquivo (img/vid)
                         </label>
                         <div class="chat-file-preview" data-chat-file-preview hidden></div>

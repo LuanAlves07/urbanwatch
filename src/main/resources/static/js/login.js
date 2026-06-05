@@ -37,10 +37,10 @@ loginForm.addEventListener("submit", async (e) => {
             const data = await response.json();
 
             UrbanWatchAuth.setToken(data.token);
-            await UrbanWatchAuth.loadCurrentUser();
+            const user = await UrbanWatchAuth.loadCurrentUser();
 
             console.log("Success!");
-            window.location.href = "/";
+            window.location.href = ["CITY_HALL", "ADMIN"].includes(user?.role) ? "/prefeitura" : "/";
         } else {
             showLoginError();
             console.error("Auth Error > Invalid email or password");
