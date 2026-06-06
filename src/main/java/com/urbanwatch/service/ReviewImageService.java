@@ -9,9 +9,11 @@ import com.urbanwatch.exception.ImageNotFoundException;
 import com.urbanwatch.repository.CallRepository;
 import com.urbanwatch.repository.CallReviewRepository;
 import com.urbanwatch.repository.ReviewImageRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,6 +39,8 @@ public class ReviewImageService {
         if (!callRepository.existsById(callId)) {
             throw new CallNotFoundException(callId);
         }
+
+        validarArquivo(file);
 
         CallReview review = callReviewRepository.findByCallId(callId)
                 .orElseThrow(() -> new CallReviewNotFoundException(callId));
@@ -68,6 +72,11 @@ public class ReviewImageService {
                 .collect(Collectors.toList());
     }
 
+    public ReviewImage buscarArquivo(Long id) {
+        return reviewImageRepository.findById(id)
+                .orElseThrow(() -> new ImageNotFoundException(id));
+    }
+
     @Transactional
     public void deletar(Long id) {
         if (!reviewImageRepository.existsById(id)) {
@@ -83,5 +92,13 @@ public class ReviewImageService {
         response.setContentType(image.getContentType());
         response.setCreatedAt(image.getCreatedAt());
         return response;
+    }
+
+    private void validarArquivo(MultipartFile file) {
+        String contentType = file.getContentType();
+
+        if (contentType == null || !(contentType.startsWith("image/") || contentType.startsWith("video/"))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Apenas imagem ou video sao permitidos.");
+        }
     }
 }

@@ -7,8 +7,10 @@ import com.urbanwatch.exception.CallNotFoundException;
 import com.urbanwatch.exception.ImageNotFoundException;
 import com.urbanwatch.repository.CallImageRepository;
 import com.urbanwatch.repository.CallRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -31,6 +33,8 @@ public class CallImageService {
     public ImageResponse salvar(Long callId, MultipartFile file) {
         Call call = callRepository.findById(callId)
                 .orElseThrow(() -> new CallNotFoundException(callId));
+
+        validarArquivo(file);
 
         try {
             CallImage image = new CallImage();
@@ -55,6 +59,11 @@ public class CallImageService {
                 .collect(Collectors.toList());
     }
 
+    public CallImage buscarArquivo(Long id) {
+        return callImageRepository.findById(id)
+                .orElseThrow(() -> new ImageNotFoundException(id));
+    }
+
     @Transactional
     public void deletar(Long id) {
         if (!callImageRepository.existsById(id)) {
@@ -70,5 +79,13 @@ public class CallImageService {
         response.setContentType(image.getContentType());
         response.setCreatedAt(image.getCreatedAt());
         return response;
+    }
+
+    private void validarArquivo(MultipartFile file) {
+        String contentType = file.getContentType();
+
+        if (contentType == null || !(contentType.startsWith("image/") || contentType.startsWith("video/"))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Apenas imagem ou video sao permitidos.");
+        }
     }
 }

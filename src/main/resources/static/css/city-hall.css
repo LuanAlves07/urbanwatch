@@ -840,6 +840,52 @@ body {
     font-weight: 800;
 }
 
+.city-review-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.city-review-image {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 82px;
+    height: 82px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #dce9f7;
+    color: #436789;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.city-review-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.city-review-image button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(217, 54, 54, 0.9);
+    color: #fff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
 .city-review-card--empty {
     border-color: #d7e1ec;
     background: #fff;
@@ -1001,6 +1047,97 @@ body {
     color: inherit;
     font-size: 13px;
     white-space: pre-line;
+}
+
+.city-chat-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.city-chat-attachment {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 82px;
+    height: 82px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #e4e9f0;
+    color: #56616d;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.city-chat-attachment img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.city-call-attachments {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+    border: 1px solid #d7e1ec;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.city-call-attachments h4 {
+    margin: 0;
+    color: #20242a;
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.city-call-attachments__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.city-call-attachment {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 88px;
+    height: 88px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #e4e9f0;
+    color: #56616d;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.city-call-attachment img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.city-call-attachment button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(217, 54, 54, 0.9);
+    color: #fff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
 }
 
 .city-chat__delete {
@@ -1222,6 +1359,24 @@ body {
     margin: 0;
     color: #677482;
     font-size: 12px;
+}
+
+.image-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    display: grid;
+    place-items: center;
+    padding: 28px;
+    background: rgba(10, 18, 30, 0.78);
+}
+
+.image-lightbox img {
+    display: block;
+    max-width: min(92vw, 980px);
+    max-height: 88vh;
+    border-radius: 8px;
+    box-shadow: 0 22px 54px rgba(0, 0, 0, 0.35);
 }
 
 .city-empty {

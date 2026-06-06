@@ -1,8 +1,12 @@
 package com.urbanwatch.controller;
 
 import com.urbanwatch.dto.ImageResponse;
+import com.urbanwatch.entity.ReviewImage;
 import com.urbanwatch.service.ReviewImageService;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,6 +45,22 @@ public class ReviewImageController {
     }
 
     // DELETE /calls/review/images/{id} — deletar imagem da avaliação (apenas ADMIN)
+    @GetMapping("/review/images/{id}/file")
+    public ResponseEntity<byte[]> arquivo(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean download) {
+        ReviewImage image = reviewImageService.buscarArquivo(id);
+        String contentType = image.getContentType() != null ? image.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.builder(download ? "attachment" : "inline")
+                        .filename(image.getFileName())
+                        .build()
+                        .toString())
+                .body(image.getData());
+    }
+
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/review/images/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {

@@ -29,6 +29,7 @@ const reviewFilePreview = document.querySelector("[data-review-file-preview]");
 const reviewStars = document.querySelectorAll("[data-review-star]");
 const reviewSummary = document.querySelector("[data-review-summary]");
 const callHistory = document.querySelector("[data-call-history]");
+const callAttachments = document.querySelector("[data-call-attachments]");
 const createdByRow = document.querySelector("[data-created-by-row]");
 const createdAtRow = document.querySelector("[data-created-at-row]");
 const myCallInfo = document.querySelector(".my-call-info");
@@ -50,11 +51,16 @@ let createMarker = null;
 let homeMarkers = [];
 let userLocation = null;
 let userLocationMarker = null;
+let locationAccessBlocked = false;
+let nearbyCallIds = new Set();
+const nearbyRadiusKm = 10;
 let selectedUploadFiles = [];
-let selectedChatFile = null;
+let selectedChatFiles = [];
 let selectedReviewFile = null;
 let editingCallId = null;
+let uploadPreviewUrls = [];
 const reviewCache = new Map();
+const commentAttachmentIdsByCall = new Map();
 const addressCache = new Map();
 const addressStorageKey = "urbanwatch:client:addresses";
 const reverseGeocodeDelay = 1100;
@@ -183,6 +189,22 @@ function escapeHtml(value) {
         .replaceAll("'", "&#039;");
 }
 
+function getCallFileUrl(id, download = false) {
+    return `/calls/images/${encodeURIComponent(id)}/file${download ? "?download=true" : ""}`;
+}
+
+function getReviewFileUrl(id, download = false) {
+    return `/calls/review/images/${encodeURIComponent(id)}/file${download ? "?download=true" : ""}`;
+}
+
+function isImageType(contentType) {
+    return String(contentType || "").startsWith("image/");
+}
+
+function isVideoType(contentType) {
+    return String(contentType || "").startsWith("video/");
+}
+
 function validateFile(file, options = {}) {
     const allowedTypes = options.allowedTypes || allowedAttachmentTypes;
     const maxSize = options.maxSize || maxAttachmentSize;
@@ -254,6 +276,68 @@ function getVisibleCommentAuthor(comment) {
     return maskPersonName(comment.userName);
 }
 
+function encodeCommentAttachment(file) {
+    return `[anexo:${file.id}:${encodeURIComponent(file.contentType || "")}:${encodeURIComponent(file.fileName || "arquivo")}]`;
+}
+
+function parseCommentContent(content) {
+    const attachments = [];
+    const text = String(content || "")
+        .split(/\r?\n/)
+        .filter((line) => {
+            const match = line.match(/^\[anexo:(\d+):([^:]*):(.*)\]$/);
+
+            if (!match || attachments.length >= 3) {
+                return true;
+            }
+
+            attachments.push({
+                id: match[1],
+                contentType: decodeURIComponent(match[2] || ""),
+                fileName: decodeURIComponent(match[3] || "arquivo")
+            });
+
+            return false;
+        })
+        .join("\n")
+        .trim();
+
+    return { text, attachments };
+}
+
+function renderCommentAttachments(attachments, options = {}) {
+    if (!attachments.length) {
+        return "";
+    }
+
+    return `
+        <div class="chat-attachments">
+            ${attachments.slice(0, 3).map((attachment) => `
+                <span class="chat-attachment ${isImageType(attachment.contentType) ? "chat-attachment--image" : "chat-attachment--video"}">
+                    ${isImageType(attachment.contentType)
+                        ? `<img src="${getCallFileUrl(attachment.id)}" alt="${escapeHtml(attachment.fileName)}" data-image-preview="${getCallFileUrl(attachment.id)}">`
+                        : '<span>VID</span>'}
+                </span>
+            `).join("")}
+        </div>
+    `;
+}
+
+function openImagePreview(src, alt = "Imagem anexada") {
+    document.querySelector("[data-image-lightbox]")?.remove();
+
+    const lightbox = document.createElement("div");
+    lightbox.className = "image-lightbox";
+    lightbox.setAttribute("data-image-lightbox", "");
+    lightbox.innerHTML = `<img src="${src}" alt="${escapeHtml(alt)}">`;
+    document.body.appendChild(lightbox);
+}
+
+function revokeUploadPreviewUrls() {
+    uploadPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    uploadPreviewUrls = [];
+}
+
 function describePlace(call) {
     if (call.visualAddress) {
         return call.visualAddress;
@@ -301,11 +385,14 @@ function addUserLocationMarker() {
 
 function requestUserLocation() {
     if (!navigator.geolocation) {
+        locationAccessBlocked = true;
+        renderCalls();
         return;
     }
 
     navigator.geolocation.getCurrentPosition(
         (position) => {
+            locationAccessBlocked = false;
             userLocation = {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude
@@ -319,8 +406,18 @@ function requestUserLocation() {
             if (createMap && !createMarker) {
                 createMap.setView([userLocation.latitude, userLocation.longitude], 14);
             }
+
+            loadNearbyCalls()
+                .then(() => {
+                    renderCalls();
+                    updateHomeMap();
+                })
+                .catch(() => {});
         },
-        () => {},
+        () => {
+            locationAccessBlocked = true;
+            renderCalls();
+        },
         {
             enableHighAccuracy: true,
             timeout: 8000,
@@ -372,7 +469,7 @@ function updateHomeMap() {
     homeMarkers.forEach((marker) => marker.remove());
     homeMarkers = [];
 
-    const callsWithCoords = calls.filter((call) => call.latitude && call.longitude && !isCallFinished(call));
+    const callsWithCoords = getGeneralCalls().filter((call) => call.latitude && call.longitude);
 
     callsWithCoords.forEach((call) => {
         const slaInfo = getSlaInfo(call);
@@ -402,49 +499,42 @@ function updateHomeMap() {
     }
 }
 
-async function fetchNominatim(params) {
-    const url = new URL("https://nominatim.openstreetmap.org/search");
-    url.searchParams.set("format", "json");
-    url.searchParams.set("limit", "1");
-    url.searchParams.set("addressdetails", "1");
-    url.searchParams.set("countrycodes", "br");
-
-    Object.entries(params).forEach(([key, value]) => {
-        if (value) {
-            url.searchParams.set(key, value);
-        }
-    });
-
-    const response = await fetch(url, {
-        headers: {
-            "Accept": "application/json",
-            "Accept-Language": "pt-BR"
-        }
-    });
-
-    if (!response.ok) {
-        throw new Error("Nominatim failed");
-    }
-
-    return response.json();
+function getNearbyReferenceLocation() {
+    return userLocation || defaultLocation;
 }
 
-async function fetchNominatimReverse(latitude, longitude) {
-    const url = new URL("https://nominatim.openstreetmap.org/reverse");
-    url.searchParams.set("format", "json");
-    url.searchParams.set("addressdetails", "1");
-    url.searchParams.set("lat", latitude);
-    url.searchParams.set("lon", longitude);
+function getGeneralCalls() {
+    return calls.filter((call) => nearbyCallIds.has(String(call.id)) && !isCallFinished(call));
+}
 
-    const response = await fetch(url, {
-        headers: {
-            "Accept": "application/json",
-            "Accept-Language": "pt-BR"
+async function loadNearbyCalls() {
+    const location = getNearbyReferenceLocation();
+    const url = new URL("/calls/proximos", window.location.origin);
+    url.searchParams.set("latitude", location.latitude);
+    url.searchParams.set("longitude", location.longitude);
+    url.searchParams.set("raio", nearbyRadiusKm);
+
+    try {
+        const response = await UrbanWatchAuth.authenticatedFetch(url.pathname + url.search);
+
+        if (!response.ok) {
+            throw new Error("Nearby calls failed");
         }
-    });
+
+        nearbyCallIds = new Set((await response.json()).map((call) => String(call.id)));
+    } catch (error) {
+        nearbyCallIds = new Set();
+    }
+}
+
+async function fetchBackendGeocode(address) {
+    const url = new URL("/location/geocode", window.location.origin);
+    url.searchParams.set("endereco", address);
+
+    const response = await UrbanWatchAuth.authenticatedFetch(url.pathname + url.search);
 
     if (!response.ok) {
-        throw new Error("Reverse geocode failed");
+        throw new Error("Geocode failed");
     }
 
     return response.json();
@@ -462,20 +552,6 @@ async function fetchBackendReverse(latitude, longitude) {
     }
 
     return response.json();
-}
-
-function formatNominatimAddress(result, fallback) {
-    const address = result.address || {};
-    const parts = [
-        address.road,
-        address.house_number,
-        address.suburb || address.neighbourhood,
-        address.city || address.town || address.village || address.municipality,
-        address.state,
-        address.postcode
-    ].filter(Boolean);
-
-    return parts.length ? parts.join(", ") : result.display_name || fallback;
 }
 
 function formatBackendAddress(result) {
@@ -685,41 +761,30 @@ async function geocodeLocation(queryText) {
     }
 
     const cepDigits = getCepDigits(rawQuery);
-    let data = [];
     let cepLookup = null;
+    let searchAddress = rawQuery;
 
     if (isCepOnly(rawQuery)) {
         try {
             cepLookup = await lookupBrazilianCep(cepDigits);
-            data = await fetchNominatim({
-                q: `${cepLookup.query}, Brasil`
-            });
+            searchAddress = cepLookup.query;
         } catch (error) {
-            data = await fetchNominatim({
-                postalcode: cepDigits,
-                country: "Brasil"
-            });
+            searchAddress = `${normalizeCep(cepDigits)}, Brasil`;
         }
     }
 
-    if (!data.length) {
-        data = await fetchNominatim({
-            q: `${rawQuery}, Brasil`
-        });
-    }
+    const queryAddress = searchAddress.toLowerCase().includes("brasil") ? searchAddress : `${searchAddress}, Brasil`;
+    const result = await fetchBackendGeocode(queryAddress);
 
-    if (!data.length) {
+    if (!result?.latitude || !result?.longitude) {
         throw new Error("Location not found");
     }
 
-    const result = data[0];
-    const resultAddress = result.address || {};
-
     return {
-        latitude: Number(result.lat),
-        longitude: Number(result.lon),
-        address: cepLookup?.displayAddress || formatNominatimAddress(result, rawQuery),
-        postcode: cepLookup?.postcode || resultAddress.postcode || (isCepOnly(rawQuery) ? normalizeCep(cepDigits) : "")
+        latitude: Number(result.latitude),
+        longitude: Number(result.longitude),
+        address: cepLookup?.displayAddress || result.endereco || rawQuery,
+        postcode: cepLookup?.postcode || (isCepOnly(rawQuery) ? normalizeCep(cepDigits) : "")
     };
 }
 
@@ -797,6 +862,14 @@ function renderCallSection(title, sectionCalls) {
     `;
 }
 
+function getLocationAccessWarning() {
+    if (!locationAccessBlocked) {
+        return "";
+    }
+
+    return '<p class="alert-location-warning">Permita o acesso a localização para ver alertas próximos</p>';
+}
+
 function renderCalls() {
     if (activeTab === "mine" && currentUser) {
         const mineCalls = calls.filter((call) => call.userId === currentUser.id);
@@ -824,14 +897,15 @@ function renderCalls() {
         return;
     }
 
-    const visibleCalls = calls.filter((call) => !isCallFinished(call));
+    const visibleCalls = getGeneralCalls();
+    const locationWarning = getLocationAccessWarning();
 
     if (!visibleCalls.length) {
-        alertList.innerHTML = '<p class="alert-empty">Nenhum alerta encontrado.</p>';
+        alertList.innerHTML = `${locationWarning}<p class="alert-empty">Nenhum alerta encontrado.</p>`;
         return;
     }
 
-    alertList.innerHTML = visibleCalls
+    alertList.innerHTML = locationWarning + visibleCalls
         .slice()
         .sort(sortCallsForClient)
         .map(renderCallCard)
@@ -850,6 +924,7 @@ async function loadCalls() {
         calls = await response.json();
         pruneStoredAddressCache();
         applyStoredAddressesToCalls();
+        await loadNearbyCalls();
         await preloadFinishedReviews();
         renderCalls();
         updateHomeMap();
@@ -894,6 +969,7 @@ async function openCreateView(locationQuery) {
 
     editingCallId = null;
     selectedUploadFiles = [];
+    revokeUploadPreviewUrls();
     fileInput.value = "";
     uploadList.innerHTML = "";
     createForm.reset();
@@ -910,8 +986,14 @@ async function openEditView(call) {
         return;
     }
 
+    if (!["PENDENTE", "RECEBIDO"].includes(call.status)) {
+        UrbanWatchAuth.showAlert("Este alerta nao pode mais ser editado.");
+        return;
+    }
+
     editingCallId = call.id;
     selectedUploadFiles = [];
+    revokeUploadPreviewUrls();
     fileInput.value = "";
     uploadList.innerHTML = "";
     createForm.reset();
@@ -935,14 +1017,26 @@ async function openEditView(call) {
 }
 
 function renderUploadList() {
+    revokeUploadPreviewUrls();
+
     uploadList.innerHTML = selectedUploadFiles
         .slice(0, 4)
-        .map((file, index) => `
+        .map((file, index) => {
+            const isImage = isImageType(file.type);
+            const previewUrl = isImage ? URL.createObjectURL(file) : "";
+            if (previewUrl) {
+                uploadPreviewUrls.push(previewUrl);
+            }
+            return `
             <span class="upload-chip">
                 <button type="button" class="upload-chip__remove" data-remove-upload="${index}" aria-label="Remover ${escapeHtml(file.name)}">X</button>
+                <span class="upload-chip__preview">
+                    ${isImage ? `<img src="${previewUrl}" alt="${escapeHtml(file.name)}">` : "<span>VID</span>"}
+                </span>
                 ${escapeHtml(file.name)}
             </span>
-        `)
+        `;
+        })
         .join("");
 }
 
@@ -950,10 +1044,14 @@ async function uploadFiles(callId) {
     for (const file of selectedUploadFiles) {
         const formData = new FormData();
         formData.append("file", file);
-        await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/images`, {
+        const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/images`, {
             method: "POST",
             body: formData
         });
+
+        if (!response.ok) {
+            throw new Error("Call image upload failed");
+        }
     }
 }
 
@@ -1005,6 +1103,7 @@ async function submitAlert(event) {
         createForm.reset();
         editingCallId = null;
         selectedUploadFiles = [];
+        revokeUploadPreviewUrls();
         uploadList.innerHTML = "";
         setFormMode("create");
     } catch (error) {
@@ -1021,6 +1120,15 @@ function isCallFinished(call) {
     return call.status === "FINALIZADO";
 }
 
+function canEditCall(call) {
+    return Boolean(
+        currentUser
+        && call
+        && call.userId === currentUser.id
+        && ["PENDENTE", "RECEBIDO"].includes(call.status)
+    );
+}
+
 function renderComments(comments) {
     if (!comments.length) {
         chatMessages.innerHTML = '<p class="alert-empty">Nenhuma mensagem enviada ainda.</p>';
@@ -1033,10 +1141,12 @@ function renderComments(comments) {
         .map((comment) => {
             const isMine = currentUser && comment.userId === currentUser.id;
             const isCityHall = isCityHallComment(comment);
+            const parsed = parseCommentContent(comment.content);
             return `
                 <article class="chat-message ${isMine ? "chat-message--mine" : "chat-message--other"} ${isCityHall ? "chat-message--city-hall" : ""}">
                     <strong>${escapeHtml(getVisibleCommentAuthor(comment))} - ${formatDate(comment.createdAt)}</strong>
-                    <p>${escapeHtml(comment.content)}</p>
+                    ${parsed.text ? `<p>${escapeHtml(parsed.text)}</p>` : ""}
+                    ${renderCommentAttachments(parsed.attachments)}
                 </article>
             `;
         })
@@ -1143,6 +1253,12 @@ function updateReviewState(call) {
 
     if (hasReview) {
         resetReviewForm();
+        if (reviewButton) {
+            reviewButton.hidden = true;
+        }
+        if (editCallButton) {
+            editCallButton.hidden = true;
+        }
     }
 
     syncCallActionsVisibility();
@@ -1233,7 +1349,7 @@ async function uploadReviewFile(callId) {
 }
 
 function renderChatFilePreview() {
-    if (!selectedChatFile) {
+    if (!selectedChatFiles.length) {
         chatFilePreview.hidden = true;
         chatFilePreview.innerHTML = "";
         return;
@@ -1241,29 +1357,102 @@ function renderChatFilePreview() {
 
     chatFilePreview.hidden = false;
     chatFilePreview.innerHTML = `
-        <span>${escapeHtml(selectedChatFile.name)}</span>
-        <button type="button" data-remove-chat-file aria-label="Remover anexo">X</button>
+        ${selectedChatFiles.map((file, index) => `
+            <span class="chat-file-chip">
+                <span>${escapeHtml(file.name)}</span>
+                <button type="button" data-remove-chat-file="${index}" aria-label="Remover anexo">X</button>
+            </span>
+        `).join("")}
     `;
 }
 
-async function uploadChatFile(callId) {
-    if (!selectedChatFile) {
-        return null;
+async function uploadChatFiles(callId) {
+    if (!selectedChatFiles.length) {
+        return [];
     }
 
-    const formData = new FormData();
-    formData.append("file", selectedChatFile);
+    const uploadedFiles = [];
 
-    const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/images`, {
-        method: "POST",
-        body: formData
-    });
+    for (const file of selectedChatFiles.slice(0, 3)) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/images`, {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error("Chat file upload failed");
+        }
+
+        uploadedFiles.push(await response.json());
+    }
+
+    return uploadedFiles;
+}
+
+function renderFileTiles(files, options = {}) {
+    if (!files.length) {
+        return '<p class="modal-image-item">Nenhum anexo enviado.</p>';
+    }
+
+    return files.slice(0, options.limit || files.length).map((file) => `
+        <span class="modal-file-tile ${isImageType(file.contentType) ? "modal-file-tile--image" : "modal-file-tile--video"}">
+            ${isImageType(file.contentType)
+                ? `<img src="${getCallFileUrl(file.id)}" alt="${escapeHtml(file.fileName || "Anexo")}" data-image-preview="${getCallFileUrl(file.id)}">`
+                : '<span>VID</span>'}
+        </span>
+    `).join("");
+}
+
+async function loadCallImages(callId, target, options = {}) {
+    if (!target) {
+        return;
+    }
+
+    target.innerHTML = '<p class="modal-image-item">Carregando anexos...</p>';
+
+    try {
+        const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/images`);
+
+        if (!response.ok) {
+            throw new Error("Images failed");
+        }
+
+        const commentAttachmentIds = commentAttachmentIdsByCall.get(String(callId)) || new Set();
+        const files = (await response.json())
+            .filter((file) => !options.excludeCommentAttachments || !commentAttachmentIds.has(String(file.id)));
+        const title = options.title ? `<h3>${escapeHtml(options.title)}</h3>` : "";
+        target.hidden = false;
+        target.innerHTML = `${title}<div class="call-attachments__grid">${renderFileTiles(files, options)}</div>`;
+    } catch (error) {
+        target.hidden = false;
+        target.innerHTML = '<p class="modal-image-item">Anexos indisponiveis agora.</p>';
+    }
+}
+
+async function refreshCallById(callId) {
+    const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}`);
 
     if (!response.ok) {
-        throw new Error("Chat file upload failed");
+        throw new Error("Call refresh failed");
     }
 
-    return response.json();
+    const updatedCall = await response.json();
+    const index = calls.findIndex((call) => String(call.id) === String(callId));
+
+    if (index >= 0) {
+        calls[index] = {
+            ...calls[index],
+            ...updatedCall,
+            visualAddress: calls[index].visualAddress
+        };
+    } else {
+        calls.push(updatedCall);
+    }
+
+    return calls.find((call) => String(call.id) === String(callId)) || updatedCall;
 }
 
 async function loadComments(callId) {
@@ -1276,17 +1465,33 @@ async function loadComments(callId) {
             throw new Error("Comments failed");
         }
 
-        renderComments(await response.json());
+        const comments = await response.json();
+        const attachmentIds = new Set();
+
+        comments.forEach((comment) => {
+            parseCommentContent(comment.content).attachments.forEach((attachment) => {
+                attachmentIds.add(String(attachment.id));
+            });
+        });
+
+        commentAttachmentIdsByCall.set(String(callId), attachmentIds);
+        renderComments(comments);
     } catch (error) {
         chatMessages.innerHTML = '<p class="alert-empty">Mensagens indisponiveis agora.</p>';
     }
 }
 
 async function openCallDetails(callId) {
-    const call = calls.find((item) => String(item.id) === String(callId));
+    let call = calls.find((item) => String(item.id) === String(callId));
 
     if (!call) {
         return;
+    }
+
+    try {
+        call = await refreshCallById(callId);
+    } catch (error) {
+        // Mantem os dados do card se a atualizacao pontual falhar.
     }
 
     selectedCall = call;
@@ -1314,23 +1519,25 @@ async function openCallDetails(callId) {
         if (myCallInfo) {
             myCallInfo.classList.toggle("my-call-info--compact", activeTab === "general" || !isOwner);
         }
+        const editable = canEditCall(call);
         reviewButton.hidden = !isOwner;
         reviewButton.disabled = !isOwner || !isCallFinished(call);
         reviewButton.classList.toggle("call-action--review-ready", isOwner && isCallFinished(call));
         reviewButton.title = isCallFinished(call) ? "Avaliar chamado" : "Disponivel apos o encerramento do chamado";
-        editCallButton.hidden = call.userId !== currentUser.id;
-        editCallButton.disabled = call.userId !== currentUser.id || isCallFinished(call);
-        editCallButton.title = isCallFinished(call) ? "Alerta ja encerrado" : "Editar alerta";
+        editCallButton.hidden = !isOwner;
+        editCallButton.disabled = !editable;
+        editCallButton.title = editable ? "Editar alerta" : "Disponivel apenas em Pendente ou Recebido";
         resetReviewForm();
         updateReviewState(call);
-        selectedChatFile = null;
+        selectedChatFiles = [];
         if (chatFileInput) {
             chatFileInput.value = "";
         }
         renderChatFilePreview();
+        await loadComments(call.id);
         await Promise.all([
-            loadComments(call.id),
             loadReview(call.id),
+            loadCallImages(call.id, callAttachments, { title: "Anexos do chamado", limit: 3, excludeCommentAttachments: true }),
             loadCallHistory(call.id)
         ]);
     } else {
@@ -1339,7 +1546,7 @@ async function openCallDetails(callId) {
         modal.querySelector("[data-modal-description]").textContent = call.description;
         modal.querySelector("[data-modal-address]").textContent = describePlace(call);
         modal.querySelector("[data-modal-updated]").textContent = formatDate(call.updatedAt || call.createdAt);
-        modal.querySelector("[data-modal-images]").innerHTML = '<p class="modal-image-item">Anexos serao exibidos quando o download de imagens estiver disponivel.</p>';
+        loadCallImages(call.id, modal.querySelector("[data-modal-images]"), { download: false });
     }
 
     if (call.latitude && call.longitude && !call.visualAddress) {
@@ -1386,6 +1593,19 @@ uploadList.addEventListener("click", (event) => {
     renderUploadList();
 });
 
+document.addEventListener("click", (event) => {
+    const previewImage = event.target.closest("[data-image-preview]");
+
+    if (previewImage) {
+        openImagePreview(previewImage.dataset.imagePreview || previewImage.src, previewImage.alt);
+        return;
+    }
+
+    if (event.target.matches("[data-image-lightbox]")) {
+        event.target.remove();
+    }
+});
+
 createForm.addEventListener("submit", submitAlert);
 
 chatForm.addEventListener("submit", async (event) => {
@@ -1398,19 +1618,20 @@ chatForm.addEventListener("submit", async (event) => {
     const input = chatForm.elements.content;
     const content = input.value.trim();
 
-    if (!content && !selectedChatFile) {
+    if (!content && !selectedChatFiles.length) {
         return;
     }
 
     try {
-        const uploadedFile = await uploadChatFile(selectedCall.id);
-        const message = content || `Arquivo anexado: ${uploadedFile.fileName}`;
+        const uploadedFiles = await uploadChatFiles(selectedCall.id);
+        const message = content || "Arquivo anexado";
+        const attachmentMarkers = uploadedFiles.map(encodeCommentAttachment).join("\n");
         const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${selectedCall.id}/comments`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ content: uploadedFile ? `${message}\nAnexo enviado: ${uploadedFile.fileName}` : message })
+            body: JSON.stringify({ content: attachmentMarkers ? `${message}\n${attachmentMarkers}` : message })
         });
 
         if (!response.ok) {
@@ -1418,25 +1639,25 @@ chatForm.addEventListener("submit", async (event) => {
         }
 
         input.value = "";
-        selectedChatFile = null;
+        selectedChatFiles = [];
         chatFileInput.value = "";
         renderChatFilePreview();
         await loadComments(selectedCall.id);
+        await loadCallImages(selectedCall.id, callAttachments, { title: "Anexos do chamado", limit: 3, excludeCommentAttachments: true });
     } catch (error) {
         UrbanWatchAuth.showAlert("Nao foi possivel enviar a mensagem agora.");
     }
 });
 
 chatFileInput?.addEventListener("change", () => {
-    const [file] = filterValidFiles(Array.from(chatFileInput.files || []), {
+    selectedChatFiles = filterValidFiles(Array.from(chatFileInput.files || []), {
         allowedTypes: allowedAttachmentTypes,
         maxSize: maxAttachmentSize,
         label: "anexo",
         allowedLabel: "PNG, JPG ou MP4"
-    });
-    selectedChatFile = file || null;
+    }).slice(0, 3);
 
-    if (!selectedChatFile) {
+    if (!selectedChatFiles.length) {
         chatFileInput.value = "";
     }
 
@@ -1444,11 +1665,13 @@ chatFileInput?.addEventListener("change", () => {
 });
 
 chatFilePreview?.addEventListener("click", (event) => {
-    if (!event.target.closest("[data-remove-chat-file]")) {
+    const removeButton = event.target.closest("[data-remove-chat-file]");
+
+    if (!removeButton) {
         return;
     }
 
-    selectedChatFile = null;
+    selectedChatFiles.splice(Number(removeButton.dataset.removeChatFile), 1);
     chatFileInput.value = "";
     renderChatFilePreview();
 });

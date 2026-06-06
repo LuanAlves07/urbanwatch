@@ -1,8 +1,12 @@
 package com.urbanwatch.controller;
 
 import com.urbanwatch.dto.ImageResponse;
+import com.urbanwatch.entity.CallImage;
 import com.urbanwatch.service.CallImageService;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,6 +45,22 @@ public class CallImageController {
     }
 
     // DELETE /calls/images/{id} — deletar imagem do chamado (apenas ADMIN)
+    @GetMapping("/images/{id}/file")
+    public ResponseEntity<byte[]> arquivo(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean download) {
+        CallImage image = callImageService.buscarArquivo(id);
+        String contentType = image.getContentType() != null ? image.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.builder(download ? "attachment" : "inline")
+                        .filename(image.getFileName())
+                        .build()
+                        .toString())
+                .body(image.getData());
+    }
+
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/images/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {

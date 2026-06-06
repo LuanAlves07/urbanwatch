@@ -33,6 +33,9 @@ let calls = [];
 let selectedCallId = null;
 let activeFilter = "all";
 let activeStatusFilter = "all";
+let criticalCalls = [];
+let criticalCallIds = new Set();
+let criticalCallsLoaded = false;
 let overviewMap = null;
 let overviewMarkers = [];
 let detailMap = null;
@@ -57,6 +60,71 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+}
+
+function getCallFileUrl(id, download = false) {
+    return `/calls/images/${encodeURIComponent(id)}/file${download ? "?download=true" : ""}`;
+}
+
+function getReviewFileUrl(id, download = false) {
+    return `/calls/review/images/${encodeURIComponent(id)}/file${download ? "?download=true" : ""}`;
+}
+
+function isImageType(contentType) {
+    return String(contentType || "").startsWith("image/");
+}
+
+function parseCommentContent(content) {
+    const attachments = [];
+    const text = String(content || "")
+        .split(/\r?\n/)
+        .filter((line) => {
+            const match = line.match(/^\[anexo:(\d+):([^:]*):(.*)\]$/);
+
+            if (!match || attachments.length >= 3) {
+                return true;
+            }
+
+            attachments.push({
+                id: match[1],
+                contentType: decodeURIComponent(match[2] || ""),
+                fileName: decodeURIComponent(match[3] || "arquivo")
+            });
+
+            return false;
+        })
+        .join("\n")
+        .trim();
+
+    return { text, attachments };
+}
+
+function renderCommentAttachments(attachments) {
+    if (!attachments.length) {
+        return "";
+    }
+
+    return `
+        <div class="city-chat-attachments">
+            ${attachments.slice(0, 3).map((attachment) => `
+                <span class="city-chat-attachment ${isImageType(attachment.contentType) ? "city-chat-attachment--image" : "city-chat-attachment--video"}">
+                    ${isImageType(attachment.contentType)
+                        ? `<img src="${getCallFileUrl(attachment.id)}" alt="${escapeHtml(attachment.fileName)}" data-image-preview="${getCallFileUrl(attachment.id)}">`
+                        : '<span>VID</span>'}
+                </span>
+            `).join("")}
+        </div>
+    `;
+}
+
+function openImagePreview(src, alt = "Imagem anexada") {
+    document.querySelector("[data-image-lightbox]")?.remove();
+
+    const lightbox = document.createElement("div");
+    lightbox.className = "image-lightbox";
+    lightbox.setAttribute("data-image-lightbox", "");
+    lightbox.innerHTML = `<img src="${src}" alt="${escapeHtml(alt)}">`;
+    document.body.appendChild(lightbox);
 }
 
 function formatDate(value) {
@@ -103,6 +171,14 @@ function getStatusLabel(status) {
     return statusLabels[status] || String(status || "PENDENTE").replaceAll("_", " ");
 }
 
+function getEditableStatuses(call) {
+    if (call?.status === "PAUSADO") {
+        return ["PAUSADO", ...editableStatuses];
+    }
+
+    return editableStatuses;
+}
+
 function getSlaInfo(call) {
     if (["FINALIZADO", "PAUSADO"].includes(call.status)) {
         return {
@@ -143,7 +219,7 @@ function getSlaColor(level) {
 }
 
 function isCritical(call) {
-    return getSlaInfo(call).level === "red";
+    return criticalCallsLoaded ? criticalCallIds.has(String(call.id)) : getSlaInfo(call).level === "red";
 }
 
 function getPriorityTag(sla) {
@@ -160,6 +236,10 @@ function getPriorityTag(sla) {
 
 function countByStatus(status) {
     return calls.filter((call) => call.status === status).length;
+}
+
+function getCriticalCount() {
+    return criticalCallsLoaded ? criticalCallIds.size : calls.filter((call) => getSlaInfo(call).level === "red").length;
 }
 
 function maskPersonName(name) {
@@ -222,77 +302,6 @@ function describePlace(call) {
     }
 
     return "Endereço não informado";
-}
-
-async function fetchNominatimReverse(latitude, longitude) {
-    const url = new URL("https://nominatim.openstreetmap.org/reverse");
-    url.searchParams.set("format", "json");
-    url.searchParams.set("addressdetails", "1");
-    url.searchParams.set("lat", latitude);
-    url.searchParams.set("lon", longitude);
-
-    const response = await fetch(url, {
-        headers: {
-            Accept: "application/json",
-            "Accept-Language": "pt-BR"
-        }
-    });
-
-    if (!response.ok) {
-        throw new Error("Reverse geocode failed");
-    }
-
-    return response.json();
-}
-
-function formatNominatimAddress(result, fallback) {
-    const address = result.address || {};
-    const parts = [
-        address.road,
-        address.house_number,
-        address.suburb || address.neighbourhood,
-        address.city || address.town || address.village || address.municipality,
-        address.state,
-        address.postcode
-    ].filter(Boolean);
-
-    return parts.length ? parts.join(", ") : result.display_name || fallback;
-}
-
-async function getCallAddress(call) {
-    if (!call.latitude || !call.longitude) {
-        return "Endereço não informado";
-    }
-
-    const key = `${call.latitude},${call.longitude}`;
-
-    if (addressCache.has(key)) {
-        return addressCache.get(key);
-    }
-
-    try {
-        const result = await fetchNominatimReverse(call.latitude, call.longitude);
-        const address = formatNominatimAddress(result, "Endereço não encontrado");
-        addressCache.set(key, address);
-        return address;
-    } catch (error) {
-        return "Endereço não encontrado";
-    }
-}
-
-async function enrichCallAddresses() {
-    const callsWithCoords = calls.filter((call) => call.latitude && call.longitude);
-
-    for (const call of callsWithCoords) {
-        if (!call.visualAddress) {
-            call.visualAddress = await getCallAddress(call);
-            renderCallList();
-
-            if (String(call.id) === String(selectedCallId)) {
-                renderDetail();
-            }
-        }
-    }
 }
 
 function getAddressKey(call) {
@@ -467,8 +476,8 @@ function getFilteredCalls() {
         const sla = getSlaInfo(call);
         const matchesFilter =
             activeFilter === "all" ||
-            (activeFilter === "critical" && sla.level === "red") ||
-            (activeFilter === "urgent" && ["red", "orange"].includes(sla.level)) ||
+            (activeFilter === "critical" && isCritical(call)) ||
+            (activeFilter === "urgent" && (isCritical(call) || sla.level === "orange")) ||
             (activeFilter === "running" && call.status === "EM_EXECUCAO");
 
         const matchesStatus = activeStatusFilter === "all" || call.status === activeStatusFilter;
@@ -495,13 +504,16 @@ function getCallSortRank(call) {
         return 5;
     }
 
+    if (isCritical(call)) {
+        return 0;
+    }
+
     if (call.status === "PAUSADO") {
         return 4;
     }
 
     const slaLevel = getSlaInfo(call).level;
     const ranks = {
-        red: 0,
         orange: 1,
         yellow: 2,
         green: 3,
@@ -522,7 +534,7 @@ function sortCallsByPriority(a, b) {
 }
 
 function renderMetrics() {
-    const critical = calls.filter(isCritical).length;
+    const critical = getCriticalCount();
     const pending = countByStatus("PENDENTE");
     const running = countByStatus("EM_EXECUCAO");
     const finishedToday = calls.filter((call) => {
@@ -555,7 +567,7 @@ function renderMetrics() {
 }
 
 function renderMetrics() {
-    const critical = calls.filter(isCritical).length;
+    const critical = getCriticalCount();
     const pending = countByStatus("PENDENTE");
     const running = countByStatus("EM_EXECUCAO");
     const finishedToday = calls.filter((call) => {
@@ -590,14 +602,14 @@ function renderMetrics() {
 }
 
 function renderCriticalList() {
-    const criticalCalls = calls.filter(isCritical).slice(0, 6);
+    const visibleCriticalCalls = (criticalCalls.length ? criticalCalls : calls.filter(isCritical)).slice(0, 6);
 
-    if (!criticalCalls.length) {
+    if (!visibleCriticalCalls.length) {
         criticalList.innerHTML = '<p class="city-empty">Nenhum chamado crítico no momento.</p>';
         return;
     }
 
-    criticalList.innerHTML = criticalCalls.map((call) => `
+    criticalList.innerHTML = visibleCriticalCalls.map((call) => `
         <button type="button" class="city-critical-item" data-select-call="${call.id}">
             <span class="city-critical-item__top">
                 <strong>ALERTA-${call.id} - ${escapeHtml(call.title || "Chamado")}</strong>
@@ -729,6 +741,7 @@ function getReviewSummary(call) {
 
 function getReviewBlock(call) {
     const review = reviewCache.get(String(call.id));
+    const reviewImages = reviewImageCache.get(String(call.id)) || [];
 
     if (!review) {
         return `
@@ -746,6 +759,18 @@ function getReviewBlock(call) {
             <strong>Nota ${escapeHtml(review.rating)}/5</strong>
             <p>${escapeHtml(review.comment || "Sem comentário.")}</p>
             <small>${escapeHtml(review.userName || "Cidadão")} - ${formatDate(review.createdAt)}</small>
+            ${reviewImages.length ? `
+                <div class="city-review-images">
+                    ${reviewImages.slice(0, 3).map((image) => `
+                        <span class="city-review-image ${isImageType(image.contentType) ? "city-review-image--image" : "city-review-image--video"}">
+                            ${isImageType(image.contentType)
+                                ? `<img src="${getReviewFileUrl(image.id)}" alt="${escapeHtml(image.fileName || "Anexo da avaliação")}" data-image-preview="${getReviewFileUrl(image.id)}">`
+                                : '<span>VID</span>'}
+                            ${isAdmin() ? `<button type="button" data-admin-delete-review-image="${escapeHtml(image.id)}" aria-label="Excluir anexo da avaliação">X</button>` : ""}
+                        </span>
+                    `).join("")}
+                </div>
+            ` : ""}
         </section>
     `;
 }
@@ -794,9 +819,6 @@ function getAdminBlock(call) {
     }
 
     const review = reviewCache.get(String(call.id));
-    const callImages = callImageCache.get(String(call.id)) || [];
-    const reviewImages = reviewImageCache.get(String(call.id)) || [];
-
     return `
         <section class="city-admin-panel" data-city-admin-panel>
             <h4>Administração</h4>
@@ -804,8 +826,6 @@ function getAdminBlock(call) {
                 <button type="button" class="city-admin-button city-admin-button--danger" data-admin-delete-call="${escapeHtml(call.id)}">Excluir chamado</button>
                 <button type="button" class="city-admin-button city-admin-button--danger" data-admin-delete-review="${escapeHtml(review?.id || "")}" ${review ? "" : "disabled"}>Excluir avaliação</button>
             </div>
-            ${getAdminImageList("Anexos do chamado", callImages, "data-admin-delete-call-image")}
-            ${getAdminImageList("Anexos da avaliação", reviewImages, "data-admin-delete-review-image")}
         </section>
     `;
 }
@@ -820,11 +840,31 @@ function renderAdminPanel(call) {
     adminRoot.outerHTML = getAdminBlock(call);
 }
 
-async function loadAdminResources(callId) {
-    if (!isAdmin()) {
+function renderCityCallAttachments(call) {
+    const root = document.querySelector("[data-city-call-attachments]");
+
+    if (!root || !call) {
         return;
     }
 
+    const images = callImageCache.get(String(call.id)) || [];
+
+    root.innerHTML = `
+        <h4>Anexos do chamado</h4>
+        <div class="city-call-attachments__grid">
+            ${images.length ? images.slice(0, 3).map((image) => `
+                <span class="city-call-attachment ${isImageType(image.contentType) ? "city-call-attachment--image" : "city-call-attachment--video"}">
+                    ${isImageType(image.contentType)
+                        ? `<img src="${getCallFileUrl(image.id)}" alt="${escapeHtml(image.fileName || "Anexo")}" data-image-preview="${getCallFileUrl(image.id)}">`
+                        : '<span>VID</span>'}
+                    ${isAdmin() ? `<button type="button" data-admin-delete-call-image="${escapeHtml(image.id)}" aria-label="Excluir anexo">X</button>` : ""}
+                </span>
+            `).join("") : '<p class="city-empty">Nenhum anexo enviado.</p>'}
+        </div>
+    `;
+}
+
+async function loadAdminResources(callId) {
     const call = calls.find((item) => String(item.id) === String(callId));
 
     if (!call) {
@@ -845,6 +885,22 @@ async function loadAdminResources(callId) {
     }
 
     renderAdminPanel(call);
+    renderCityCallAttachments(call);
+    renderCallReview(call);
+}
+
+async function deleteReviewImages(callId) {
+    const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/review/images`);
+
+    if (!response.ok) {
+        return;
+    }
+
+    const images = await response.json();
+
+    await Promise.all(
+        images.map((image) => deleteRequest(`/calls/review/images/${image.id}`))
+    );
 }
 
 async function loadReview(callId) {
@@ -986,7 +1042,7 @@ function renderDetail() {
                     <label class="city-detail-field">
                         <span>Alterar status</span>
                         <select name="status">
-                            ${editableStatuses.map((status) => `<option value="${status}" ${status === call.status ? "selected" : ""}>${escapeHtml(getStatusLabel(status))}</option>`).join("")}
+                            ${getEditableStatuses(call).map((status) => `<option value="${status}" ${status === call.status ? "selected" : ""}>${escapeHtml(getStatusLabel(status))}</option>`).join("")}
                         </select>
                     </label>
 
@@ -1039,6 +1095,10 @@ function renderDetail() {
                             <button type="button" data-city-chat-send aria-label="Enviar">&rsaquo;</button>
                         </div>
                     </section>
+                    <section class="city-call-attachments" data-city-call-attachments>
+                        <h4>Anexos do chamado</h4>
+                        <p class="city-empty">Carregando anexos...</p>
+                    </section>
                 </aside>
             </div>
         </form>
@@ -1070,11 +1130,13 @@ function renderComments(comments) {
         .map((comment) => {
             const isMine = currentUser && comment.userId === currentUser.id;
             const isAuthority = isAuthorityComment(comment);
+            const parsed = parseCommentContent(comment.content);
             return `
                 <article class="city-chat__message ${isMine || isAuthority ? "city-chat__message--mine" : ""} ${isAdmin() ? "city-chat__message--admin-control" : ""}">
                     ${isAdmin() ? `<button type="button" class="city-chat__delete" data-admin-delete-comment="${escapeHtml(comment.id)}" aria-label="Excluir comentario">X</button>` : ""}
                     <strong>${escapeHtml(getCommentAuthor(comment))} - ${formatDate(comment.createdAt)}</strong>
-                    <p>${escapeHtml(comment.content)}</p>
+                    ${parsed.text ? `<p>${escapeHtml(parsed.text)}</p>` : ""}
+                    ${renderCommentAttachments(parsed.attachments)}
                 </article>
             `;
         })
@@ -1144,6 +1206,14 @@ function renderAll() {
 
 async function openCall(callId) {
     selectedCallId = callId;
+
+    try {
+        await refreshCallById(callId);
+        await loadCriticalCalls();
+    } catch (error) {
+        // Mantem os dados da lista se o refresh pontual falhar.
+    }
+
     renderCallList();
     renderDetail();
     openModal();
@@ -1210,6 +1280,8 @@ async function loadCalls() {
 
         calls = await response.json();
         pruneStoredAddressCache();
+        await updateStoredSlaLevels();
+        await loadCriticalCalls();
 
         if (!selectedCallId && calls.length) {
             selectedCallId = calls[0].id;
@@ -1220,6 +1292,48 @@ async function loadCalls() {
     } catch (error) {
         callList.innerHTML = '<p class="city-empty">Nao foi possivel carregar os chamados agora.</p>';
     }
+}
+
+async function refreshCallById(callId) {
+    const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}`);
+
+    if (!response.ok) {
+        throw new Error("Call refresh failed");
+    }
+
+    const updatedCall = await response.json();
+    const index = calls.findIndex((call) => String(call.id) === String(callId));
+
+    if (index >= 0) {
+        calls[index] = {
+            ...calls[index],
+            ...updatedCall,
+            visualAddress: calls[index].visualAddress
+        };
+    } else {
+        calls.push(updatedCall);
+    }
+
+    return updatedCall;
+}
+
+async function refreshSelectedCall() {
+    if (!selectedCallId) {
+        return null;
+    }
+
+    const updatedCall = await refreshCallById(selectedCallId);
+    await loadCriticalCalls();
+    renderAll();
+    return updatedCall;
+}
+
+async function updateStoredSlaLevels() {
+    const activeCalls = calls.filter((call) => call.id && call.status !== "FINALIZADO");
+
+    await Promise.allSettled(
+        activeCalls.map((call) => patchEmpty(`/calls/${call.id}/sla`))
+    );
 }
 
 async function patchJson(url, body) {
@@ -1238,6 +1352,18 @@ async function patchJson(url, body) {
     return response.json();
 }
 
+async function patchEmpty(url) {
+    const response = await UrbanWatchAuth.authenticatedFetch(url, {
+        method: "PATCH"
+    });
+
+    if (!response.ok) {
+        throw new Error("Request failed");
+    }
+
+    return response.json();
+}
+
 async function deleteRequest(url) {
     const response = await UrbanWatchAuth.authenticatedFetch(url, {
         method: "DELETE"
@@ -1246,6 +1372,24 @@ async function deleteRequest(url) {
     if (!response.ok) {
         throw new Error("Delete failed");
     }
+}
+
+async function loadCriticalCalls() {
+    try {
+        const response = await UrbanWatchAuth.authenticatedFetch("/calls/criticos");
+
+        if (!response.ok) {
+            throw new Error("Critical calls failed");
+        }
+
+        criticalCalls = (await response.json()).filter((call) => !["FINALIZADO", "PAUSADO"].includes(call.status));
+        criticalCallsLoaded = true;
+    } catch (error) {
+        criticalCalls = calls.filter((call) => !["FINALIZADO", "PAUSADO"].includes(call.status) && getSlaInfo(call).level === "red");
+        criticalCallsLoaded = false;
+    }
+
+    criticalCallIds = new Set(criticalCalls.map((call) => String(call.id)));
 }
 
 async function deleteCallComments(callId) {
@@ -1269,15 +1413,29 @@ async function saveObservation(form) {
 }
 
 async function saveStatus(form) {
-    await patchJson(`/calls/${selectedCallId}/status`, {
-        status: form.elements.status.value,
-        observacao: form.elements.statusObservation.value.trim()
-    });
+    const currentCall = getSelectedCall();
+    const nextStatus = form.elements.status.value;
+    const statusObservation = form.elements.statusObservation.value.trim();
+
+    if (currentCall?.status === "PAUSADO" && nextStatus !== "PAUSADO") {
+        await patchEmpty(`/calls/${selectedCallId}/retomar`);
+
+        if (nextStatus !== "EM_AVALIACAO") {
+            await patchJson(`/calls/${selectedCallId}/status`, {
+                status: nextStatus,
+                observacao: statusObservation
+            });
+        }
+    } else {
+        await patchJson(`/calls/${selectedCallId}/status`, {
+            status: nextStatus,
+            observacao: statusObservation
+        });
+    }
 
     await saveObservation(form);
     UrbanWatchAuth.showAlert("Alteracoes salvas com sucesso.");
-    await loadCalls();
-    renderDetail();
+    await refreshSelectedCall();
     await Promise.all([
         loadComments(selectedCallId),
         loadReview(selectedCallId),
@@ -1296,8 +1454,13 @@ async function pauseCall(form) {
 
     await patchJson(`/calls/${selectedCallId}/pausar`, { motivo });
     UrbanWatchAuth.showAlert("Chamado pausado com sucesso.");
-    await loadCalls();
-    renderDetail();
+    await refreshSelectedCall();
+    await Promise.all([
+        loadComments(selectedCallId),
+        loadReview(selectedCallId),
+        loadHistory(selectedCallId),
+        loadAdminResources(selectedCallId)
+    ]);
 }
 
 filterButtons.forEach((button) => {
@@ -1322,6 +1485,18 @@ statusFilterButtons.forEach((button) => {
 searchInput.addEventListener("input", renderCallList);
 
 document.addEventListener("click", async (event) => {
+    const previewImage = event.target.closest("[data-image-preview]");
+
+    if (previewImage) {
+        openImagePreview(previewImage.dataset.imagePreview || previewImage.src, previewImage.alt);
+        return;
+    }
+
+    if (event.target.matches("[data-image-lightbox]")) {
+        event.target.remove();
+        return;
+    }
+
     const metricButton = event.target.closest("[data-metric-filter]");
 
     if (metricButton) {
@@ -1368,8 +1543,10 @@ document.addEventListener("click", async (event) => {
         }
 
         try {
+            await deleteReviewImages(selectedCallId);
             await deleteRequest(`/calls/reviews/${deleteReviewButton.dataset.adminDeleteReview}`);
             reviewCache.delete(String(selectedCallId));
+            reviewImageCache.delete(String(selectedCallId));
             UrbanWatchAuth.showAlert("Avaliacao excluida com sucesso.");
             await loadReview(selectedCallId);
             await loadAdminResources(selectedCallId);
