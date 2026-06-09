@@ -253,13 +253,19 @@ feature/<modulo>-<dev>  ──►  develop  ──►  (testes integrados)  ─�
 
 ## Integrantes
 
-> _Preencher com os nomes e papéis reais da equipe._
-
-| Nome | GitHub | Módulo / responsabilidade |
+| Nome | RA | GitHub |
 |---|---|---|
-| Luan Alves | [@LuanAlves07](https://github.com/LuanAlves07) | _(preencher)_ |
-| _(preencher)_ | | Core de chamados |
-| _(preencher)_ | | Geolocalização / OpenStreetMap |
+| Luan Matheus Santos Alves | 824219029 | [@LuanAlves07](https://github.com/LuanAlves07) |
+| Samuel Bispo Sampaio | 824218589 | — |
+| Victor Moreira Cruz | 12525220499 | — |
+| Matheus Queiroz de Araújo | 12525131483 | — |
+| Roberto Junnyo Wenceslau Ribeiro | 1242022776 | — |
+| Guilherme Lima Macário | 1352423478 | — |
+| Gabrielle Aparecida Félix dos Santos | 12524239827 | — |
+| Nathan de Souza Luchesi | 942515703 | — |
+| Adriano Henrique Xavier Rodrigues | 325224607 | — |
+| Raul Carneiro Torres Menezes | 12524236526 | — |
+| Gabriel Lima Rodrigues | 1292114741 | — |
 
 ## Capturas de Tela
 
