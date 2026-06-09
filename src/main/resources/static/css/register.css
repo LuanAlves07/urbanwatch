@@ -1,0 +1,235 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: #8a8a90;
+    background: #f2dfb6;
+}
+
+.register-page {
+    min-height: calc(100vh - 110px);
+    margin-top: 110px;
+    background: #f2dfb6;
+}
+
+.register-layout {
+    display: grid;
+    grid-template-columns: 42.7fr 57.3fr;
+    min-height: calc(100vh - 110px);
+}
+
+.register-side {
+    display: flex;
+    align-items: center;
+    padding: 34px 0 42px;
+}
+
+.register-side--left {
+    justify-content: flex-end;
+    padding-left: 24px;
+    background: rgba(95, 149, 246, 0.98);
+}
+
+.register-side--right {
+    justify-content: flex-start;
+    padding-right: 24px;
+    background: rgba(245, 226, 187, 0.96);
+    background-image: url("/images/bg/bg-register.png");
+    background-size: cover;
+    background-position: center;
+}
+
+.register-aside {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: min(338px, 100%);
+    min-height: 648px;
+    padding: 44px 28px;
+    border-radius: 16px 0 0 16px;
+    background: #5f95f6;
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 3px 8px rgba(37, 81, 150, 0.45), inset 0 0 8px rgba(31, 75, 143, 0.4);
+}
+
+.register-aside h2 {
+    margin: 0 0 40px;
+    font-size: 31px;
+    font-weight: 400;
+    line-height: 1.2;
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+}
+
+.register-aside p {
+    margin: 0 0 16px;
+    font-size: 18px;
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+}
+
+.aside-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 212px;
+    height: 62px;
+    border-radius: 5px;
+    background: #177adc;
+    color: #fff;
+    font-size: 29px;
+    text-decoration: none;
+    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.35);
+}
+
+.register-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(506px, 100%);
+    min-height: 648px;
+    padding: 18px 32px;
+    border-radius: 0 20px 20px 0;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.35);
+}
+
+.register-form {
+    width: min(442px, 100%);
+}
+
+.register-form h1 {
+    margin: 0 0 18px;
+    color: #5f95f6;
+    font-size: 31px;
+    font-weight: 400;
+    text-align: center;
+    text-shadow: 0 2px 3px rgba(39, 99, 184, 0.35);
+}
+
+.register-form label {
+    display: block;
+    margin: 14px 0 8px;
+    font-size: 18px;
+    color: #8c8c92;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.18);
+}
+
+.register-form input {
+    width: 100%;
+    height: 43px;
+    padding: 0 20px;
+    border: 1px solid #b9b9bd;
+    border-radius: 10px;
+    background: #e4e4e7;
+    color: #555;
+    font-size: 14px;
+    outline: none;
+}
+
+.register-form input:focus {
+    border-color: #5f95f6;
+    box-shadow: 0 0 0 3px rgba(95, 149, 246, 0.18);
+}
+
+.register-form input::placeholder {
+    color: #9d9da2;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-field {
+    min-width: 0;
+}
+
+.register-form .input-error {
+    border-color: #f05d5d;
+    color: #c60000;
+    box-shadow: 0 0 0 2px rgba(240, 93, 93, 0.16);
+}
+
+.register-form .input-error::placeholder {
+    color: #c60000;
+}
+
+.error-text {
+    display: block;
+    min-height: 20px;
+    margin: 14px 0 16px;
+    color: #c60000;
+    font-size: 13px;
+}
+
+.register-form button {
+    display: block;
+    width: 224px;
+    height: 60px;
+    margin: 0 auto;
+    border: 0;
+    border-radius: 8px;
+    background: #5f95f6;
+    color: #fff;
+    font-size: 29px;
+    font-weight: 400;
+    cursor: pointer;
+    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.28);
+}
+
+@media (max-width: 840px) {
+    .register-page {
+        min-height: calc(100vh - 88px);
+        margin-top: 88px;
+        background: #f2dfb6;
+    }
+
+    .register-layout {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .register-side {
+        padding: 0;
+    }
+
+    .register-side--left {
+        order: 2;
+        padding: 0;
+    }
+
+    .register-side--right {
+        order: 1;
+        padding: 0;
+    }
+
+    .register-aside,
+    .register-card {
+        width: 100%;
+        min-height: 0;
+        border-radius: 0;
+    }
+
+    .register-aside {
+        padding: 32px 22px;
+    }
+
+    .register-card {
+        padding: 28px 22px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
