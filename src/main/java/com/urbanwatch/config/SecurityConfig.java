@@ -55,6 +55,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/calls", "/calls/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/location/**").permitAll()
                         .requestMatchers("/users/me").authenticated()
                         .anyRequest().authenticated()
                 )
