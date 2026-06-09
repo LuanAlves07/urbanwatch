@@ -97,7 +97,6 @@ const UrbanWatchAuth = (() => {
             updateNavbar(user);
             return user;
         } catch (error) {
-            console.error("AuthError > ", error);
             updateNavbar(null);
             return null;
         }

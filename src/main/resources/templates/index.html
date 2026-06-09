@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Início - SOS Urbano</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+    <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="stylesheet" th:href="@{/css/index.css}">
     <link rel="stylesheet" th:href="@{/css/fragments.css}">
@@ -18,7 +18,7 @@
                 <p class="home-kicker">Um sistema para auxiliar a prefeitura na solução de problemas da cidade</p>
                 <h1>Busque por alertas feitos por outros cidadãos abaixo</h1>
 
-                <div class="map-panel" aria-label="Mapa de alertas proximos">
+                <div class="map-panel" aria-label="Mapa de alertas próximos">
                     <div id="homeMap" class="leaflet-map"></div>
                 </div>
 
@@ -103,7 +103,7 @@
                 <p data-modal-description></p>
                 <dl>
                     <div>
-                        <dt>Endereco</dt>
+                        <dt>Endereço</dt>
                         <dd data-modal-address></dd>
                     </div>
                     <div>
@@ -206,7 +206,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+    <script src="/vendor/leaflet/leaflet.js"></script>
     <script th:src="@{/js/index.js}"></script>
 </body>
 </html>

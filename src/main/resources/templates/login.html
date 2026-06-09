@@ -20,12 +20,12 @@
                         <p>Preencha os dados para realizar o login.</p>
 
                         <label for="email">E-mail</label>
-                        <input id="email" name="email" type="text" placeholder="Ex.: seuemail@email.com" autocomplete="username">
+                        <input id="email" name="email" type="email" required placeholder="Ex.: seuemail@email.com" autocomplete="username">
 
                         <label for="password">Senha</label>
-                        <input id="password" name="password" type="password" placeholder="************************" autocomplete="current-password">
+                        <input id="password" name="password" type="password" required placeholder="************************" autocomplete="current-password">
 
-                        <a class="forgot-link" href="#">Esqueci minha senha</a>
+                        <a class="forgot-link" href="#" onclick="event.preventDefault()" aria-disabled="true" title="Recurso em breve">Esqueci minha senha</a>
 
                         <button type="submit" class="hover-bright">Entrar</button>
                     </form>

@@ -936,8 +936,7 @@ async function loadCalls() {
         updateHomeMap();
         enrichCallAddresses();
     } catch (error) {
-        console.error("CallsError > ", error);
-        alertList.innerHTML = '<p class="alert-empty">Nao foi possivel carregar os alertas agora.</p>';
+        alertList.innerHTML = '<p class="alert-empty">Não foi possível carregar os alertas agora.</p>';
     }
 }
 
@@ -1073,8 +1072,14 @@ async function submitAlert(event) {
     const description = document.querySelector("#alertDescription").value.trim();
 
     if (!title || !description) {
-        UrbanWatchAuth.showAlert("Preencha o titulo e as observacoes do alerta.");
+        UrbanWatchAuth.showAlert("Preencha o título e as observações do alerta.");
         return;
+    }
+
+    const originalLabel = createSubmit ? createSubmit.innerHTML : "";
+    if (createSubmit) {
+        createSubmit.disabled = true;
+        createSubmit.textContent = editingCallId ? "Salvando..." : "Enviando...";
     }
 
     try {
@@ -1113,8 +1118,12 @@ async function submitAlert(event) {
         uploadList.innerHTML = "";
         setFormMode("create");
     } catch (error) {
-        console.error("CreateCallError > ", error);
-        UrbanWatchAuth.showAlert(editingCallId ? "Nao foi possivel salvar as alteracoes agora." : "Nao foi possivel criar o alerta agora.");
+        UrbanWatchAuth.showAlert(editingCallId ? "Não foi possível salvar as alterações agora." : "Não foi possível criar o alerta agora.");
+    } finally {
+        if (createSubmit) {
+            createSubmit.disabled = false;
+            createSubmit.innerHTML = originalLabel;
+        }
     }
 }
 
