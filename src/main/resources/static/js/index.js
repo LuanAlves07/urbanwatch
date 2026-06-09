@@ -22,6 +22,12 @@ const chatFilePreview = document.querySelector("[data-chat-file-preview]");
 const callActions = document.querySelector("[data-call-actions]");
 const reviewButton = document.querySelector("[data-review-button]");
 const editCallButton = document.querySelector("[data-edit-call-button]");
+const voteSection = document.querySelector("[data-call-votes]");
+const voteLikeButton = document.querySelector("[data-vote-like]");
+const voteDislikeButton = document.querySelector("[data-vote-dislike]");
+const voteLikesCount = document.querySelector("[data-vote-likes]");
+const voteDislikesCount = document.querySelector("[data-vote-dislikes]");
+let currentUserVote = null;
 const reviewForm = document.querySelector("[data-review-form]");
 const reviewRatingInput = document.querySelector("[data-review-rating]");
 const reviewFileInput = document.querySelector("[data-review-file]");
@@ -1547,6 +1553,7 @@ async function openCallDetails(callId) {
         modal.querySelector("[data-modal-address]").textContent = describePlace(call);
         modal.querySelector("[data-modal-updated]").textContent = formatDate(call.updatedAt || call.createdAt);
         loadCallImages(call.id, modal.querySelector("[data-modal-images]"), { download: false });
+        loadVotes(call.id);
     }
 
     if (call.latitude && call.longitude && !call.visualAddress) {
@@ -1725,6 +1732,64 @@ modal.addEventListener("click", (event) => {
         modal.hidden = true;
     }
 });
+
+function renderVotes(summary) {
+    if (!voteSection) {
+        return;
+    }
+    currentUserVote = summary && typeof summary.userVote === "boolean" ? summary.userVote : null;
+    voteLikesCount.textContent = summary ? summary.likes : 0;
+    voteDislikesCount.textContent = summary ? summary.dislikes : 0;
+    const liked = currentUserVote === true;
+    const disliked = currentUserVote === false;
+    voteLikeButton.classList.toggle("vote-btn--active", liked);
+    voteLikeButton.setAttribute("aria-pressed", String(liked));
+    voteDislikeButton.classList.toggle("vote-btn--active", disliked);
+    voteDislikeButton.setAttribute("aria-pressed", String(disliked));
+    voteSection.hidden = false;
+}
+
+async function loadVotes(callId) {
+    if (!voteSection) {
+        return;
+    }
+    try {
+        const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${callId}/votes`);
+        if (!response.ok) {
+            throw new Error("Falha ao carregar votos");
+        }
+        renderVotes(await response.json());
+    } catch (error) {
+        voteSection.hidden = true;
+    }
+}
+
+async function submitVote(value) {
+    if (!selectedCall) {
+        return;
+    }
+    if (!currentUser) {
+        UrbanWatchAuth.showAlert("Faca login para curtir ou descurtir um chamado.");
+        return;
+    }
+    const remove = currentUserVote === value;
+    try {
+        const response = await UrbanWatchAuth.authenticatedFetch(`/calls/${selectedCall.id}/votes`, {
+            method: remove ? "DELETE" : "POST",
+            headers: remove ? undefined : { "Content-Type": "application/json" },
+            body: remove ? undefined : JSON.stringify({ value })
+        });
+        if (!response.ok) {
+            throw new Error("Falha ao votar");
+        }
+        renderVotes(await response.json());
+    } catch (error) {
+        UrbanWatchAuth.showAlert("Nao foi possivel registrar seu voto agora.");
+    }
+}
+
+voteLikeButton?.addEventListener("click", () => submitVote(true));
+voteDislikeButton?.addEventListener("click", () => submitVote(false));
 
 reviewButton.addEventListener("click", () => {
     if (!selectedCall || !isCallFinished(selectedCall)) {
