@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -114,6 +115,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, "Arquivo excede o tamanho maximo permitido", request, null);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResourceFound(
+            NoResourceFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Recurso nao encontrado", request, null);
     }
 
     @ExceptionHandler(Exception.class)
