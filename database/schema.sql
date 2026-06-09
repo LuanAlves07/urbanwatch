@@ -132,3 +132,19 @@ CREATE TABLE review_images (
         FOREIGN KEY (review_id)
         REFERENCES call_reviews(id)
 );
+
+CREATE TABLE votes (
+    id BIGSERIAL PRIMARY KEY,
+    value BOOLEAN NOT NULL,            -- true = like, false = dislike
+    created_at TIMESTAMP NOT NULL,
+    call_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    CONSTRAINT fk_votes_call
+        FOREIGN KEY (call_id)
+        REFERENCES calls(id),
+    CONSTRAINT fk_votes_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id),
+    CONSTRAINT uk_votes_call_user
+        UNIQUE (call_id, user_id)
+);

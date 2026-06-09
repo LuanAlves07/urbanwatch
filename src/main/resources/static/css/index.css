@@ -1317,3 +1317,62 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Likes / Dislikes (votos) */
+.call-votes {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #e3e6eb;
+}
+
+.call-votes__label {
+    display: block;
+    font-size: 0.9rem;
+    color: #5b6470;
+    margin-bottom: 10px;
+}
+
+.call-votes__buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.vote-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid #cfd4dc;
+    border-radius: 999px;
+    background: #fff;
+    color: #2b3440;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.vote-btn:hover {
+    border-color: #1073e0;
+}
+
+.vote-btn .vote-count {
+    font-variant-numeric: tabular-nums;
+    color: #5b6470;
+}
+
+.vote-btn--like.vote-btn--active {
+    background: #1073e0;
+    border-color: #1073e0;
+    color: #fff;
+}
+
+.vote-btn--dislike.vote-btn--active {
+    background: #d8424b;
+    border-color: #d8424b;
+    color: #fff;
+}
+
+.vote-btn--active .vote-count {
+    color: inherit;
+}
