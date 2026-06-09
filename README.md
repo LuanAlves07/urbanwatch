@@ -71,6 +71,7 @@ distribuídos vistos em aula.
 
 **Interação e avaliação**
 - Comentários nos chamados.
+- **Likes / Dislikes** nos chamados (um voto por usuário, com troca/remoção).
 - Avaliação do atendimento (nota 0–5 + comentário + imagem), liberada após o
   chamado ser finalizado.
 
@@ -287,13 +288,13 @@ feature/<modulo>-<dev>  ──►  develop  ──►  (testes integrados)  ─�
 - [x] Geolocalização e mapa (OpenStreetMap)
 - [x] Documentação Swagger/OpenAPI
 - [x] CI (GitHub Actions) + cobertura de testes inicial
-- [ ] Testes integrados E2E com PostgreSQL
-- [ ] Deploy em nuvem (release)
-- [ ] Merge `develop → main` + tag `v1.0.0`
+- [x] Likes / Dislikes nos chamados
+- [x] Testes integrados E2E com PostgreSQL
+- [x] Merge `develop → main` + tag `v1.0.0`
+- [ ] Deploy em nuvem
 
 ## Melhorias Futuras
 
-- **Likes/dislikes** nos chamados (interação social adicional).
 - **Recuperação de senha** ("esqueci minha senha").
 - **Paginação com metadados** no frontend (hoje usa array com teto de segurança).
 - **Notificações** (e-mail / push) de mudança de status.
@@ -303,10 +304,8 @@ feature/<modulo>-<dev>  ──►  develop  ──►  (testes integrados)  ─�
 
 ## Licença
 
-Projeto **acadêmico**, sem fins comerciais, desenvolvido para a disciplina de
-Sistemas Distribuídos e Mobile. _Defina uma licença adicionando um arquivo
-`LICENSE` (sugestão: [MIT](https://choosealicense.com/licenses/mit/)) caso o
-repositório seja tornado público para reuso._
+Distribuído sob a licença **MIT** — veja o arquivo [`LICENSE`](LICENSE).
+Projeto acadêmico, desenvolvido para a disciplina de Sistemas Distribuídos e Mobile.
 
 ## Histórico de Versões
 
