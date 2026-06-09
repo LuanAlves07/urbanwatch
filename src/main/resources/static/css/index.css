@@ -1376,3 +1376,14 @@ body {
 .vote-btn--active .vote-count {
     color: inherit;
 }
+
+/* Mapa mais compacto em telas pequenas */
+@media (max-width: 560px) {
+    .map-panel {
+        height: 240px;
+    }
+
+    .map-panel--large {
+        height: 280px;
+    }
+}

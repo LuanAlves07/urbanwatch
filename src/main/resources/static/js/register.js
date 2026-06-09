@@ -3,6 +3,7 @@ const elPassword = document.querySelector("#password");
 const elConfirmPassword = document.querySelector("#confirmPassword");
 
 const errorTextPass = document.querySelector(".error-text")
+const registerSubmit = registerForm.querySelector("button[type='submit']");
 
 function markPasswordError(message) {
     elPassword.classList.add("input-error");
@@ -19,7 +20,7 @@ function clearPasswordError() {
 elConfirmPassword.addEventListener('input', (e)=>{
     if(e.target.value !== elPassword.value){
         elConfirmPassword.classList.add('input-error')
-        errorTextPass.textContent = '*As senhas nao correspondem*'
+        errorTextPass.textContent = '*As senhas não correspondem*'
         errorTextPass.classList.remove('hidden')
     } else {
         clearPasswordError()
@@ -30,7 +31,7 @@ elConfirmPassword.addEventListener('input', (e)=>{
 elPassword.addEventListener('input', (e)=>{
     if(e.target.value !== elConfirmPassword.value){
         elConfirmPassword.classList.add('input-error')
-        errorTextPass.textContent = '*As senhas nao correspondem*'
+        errorTextPass.textContent = '*As senhas não correspondem*'
         errorTextPass.classList.remove('hidden')
     } else {
         clearPasswordError()
@@ -47,38 +48,43 @@ registerForm.addEventListener("submit", async (e) =>{
     clearPasswordError();
 
     if (password.length < 6) {
-        markPasswordError("Senha invalida. Use pelo menos 6 caracteres.");
+        markPasswordError("Senha inválida. Use pelo menos 6 caracteres.");
         return;
     }
 
-    if (elPassword.value === elConfirmPassword.value){
-        try{
-            const response = await fetch("/auth/register", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({name, email, password})
-            })
-            if (response.ok){
-                const data = await response.json();
-
-                UrbanWatchAuth.setToken(data.token);
-                await UrbanWatchAuth.loadCurrentUser();
-
-                console.log("Success!")
-                window.location.href = "/";
-            } else {
-                const errorData = await response.json().catch(() => null);
-                markPasswordError(errorData?.message || "Nao foi possivel registrar. Verifique a senha e os dados informados.");
-                console.error("Auth Error > Register failed", errorData);
-            }
-        } catch (e){
-            markPasswordError("Nao foi possivel registrar agora. Tente novamente em instantes.");
-            console.error("AuthError > ", e)
-        }
-    } else {
-        markPasswordError("As senhas nao correspondem.");
+    if (elPassword.value !== elConfirmPassword.value) {
+        markPasswordError("As senhas não correspondem.");
+        return;
     }
 
+    const originalLabel = registerSubmit.textContent;
+    registerSubmit.disabled = true;
+    registerSubmit.textContent = "Registrando...";
+
+    try {
+        const response = await fetch("/auth/register", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({name, email, password})
+        })
+        if (response.ok){
+            const data = await response.json();
+
+            UrbanWatchAuth.setToken(data.token);
+            await UrbanWatchAuth.loadCurrentUser();
+
+            window.location.href = "/";
+            return;
+        }
+
+        const errorData = await response.json().catch(() => null);
+        markPasswordError(errorData?.message || "Não foi possível registrar. Verifique a senha e os dados informados.");
+    } catch (e){
+        markPasswordError("Não foi possível registrar agora. Tente novamente em instantes.");
+    } finally {
+        registerSubmit.disabled = false;
+        registerSubmit.textContent = originalLabel;
+    }
 })

@@ -546,39 +546,6 @@ function renderMetrics() {
     }).length;
 
     const metrics = [
-        ["#", calls.length, "Total de chamados", ""],
-        ["!", pending, "Aguardando ação", ""],
-        ["A", critical, "Críticos", "city-metric--critical"],
-        ["%", running, "Em execução", ""],
-        ["OK", finishedToday, "Finalizados hoje", ""]
-    ];
-
-    metricsRoot.innerHTML = metrics.map(([icon, value, label, extraClass]) => `
-        <article class="city-metric ${extraClass}">
-            <span class="city-metric__icon">${escapeHtml(icon)}</span>
-            <span>
-                <strong>${value}</strong>
-                <span>${escapeHtml(label)}</span>
-            </span>
-        </article>
-    `).join("");
-
-    criticalInlineCount.textContent = `${critical} críticos`;
-}
-
-function renderMetrics() {
-    const critical = getCriticalCount();
-    const pending = countByStatus("PENDENTE");
-    const running = countByStatus("EM_EXECUCAO");
-    const finishedToday = calls.filter((call) => {
-        if (call.status !== "FINALIZADO" || !call.updatedAt) {
-            return false;
-        }
-
-        return new Date(call.updatedAt).toDateString() === new Date().toDateString();
-    }).length;
-
-    const metrics = [
         ["list.png", calls.length, "Total de chamados", "city-metric--total", "all", "all"],
         ["clock.png", pending, "Aguardando ação", "city-metric--pending", "all", "PENDENTE"],
         ["alert.png", critical, "Críticos", "city-metric--critical", "critical", "all"],
@@ -1264,7 +1231,7 @@ async function requireCityHall() {
     }
 
     currentUser = user;
-    cityUser.textContent = `Ola, ${user.name || "Prefeitura"}!`;
+    cityUser.textContent = `Olá, ${user.name || "Prefeitura"}!`;
     return user;
 }
 

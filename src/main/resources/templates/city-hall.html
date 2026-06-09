@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel da Prefeitura - SOS Urbano</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+    <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
     <link rel="stylesheet" th:href="@{/css/style.css}">
     <link rel="stylesheet" th:href="@{/css/fragments.css}">
     <link rel="stylesheet" th:href="@{/css/city-hall.css}">
@@ -17,9 +17,9 @@
                 <span>Painel da prefeitura</span>
             </a>
 
-            <nav class="city-nav" aria-label="Acoes da prefeitura">
+            <nav class="city-nav" aria-label="Ações da prefeitura">
                 <button type="button" class="city-nav-button" data-city-refresh>Atualizar</button>
-                <strong data-city-user>Ola, Prefeitura!</strong>
+                <strong data-city-user>Olá, Prefeitura!</strong>
                 <button type="button" class="city-logout" data-city-logout>Sair</button>
             </nav>
         </header>
@@ -100,7 +100,7 @@
     </div>
 
     <script th:src="@{/js/auth.js}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+    <script src="/vendor/leaflet/leaflet.js"></script>
     <script th:src="@{/js/city-hall.js}"></script>
 </body>
 </html>
