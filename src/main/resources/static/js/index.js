@@ -540,7 +540,7 @@ async function fetchBackendGeocode(address) {
     const response = await UrbanWatchAuth.authenticatedFetch(url.pathname + url.search);
 
     if (!response.ok) {
-        throw new Error("Geocode failed");
+        return null; // 404 = nada encontrado; geocodeLocation decide o fallback
     }
 
     return response.json();
@@ -748,13 +748,19 @@ async function lookupBrazilianCep(cepDigits) {
         throw new Error("CEP not found");
     }
 
-    const address = [data.logradouro, data.bairro, data.localidade, data.uf, data.cep]
+    const displayAddress = [data.logradouro, data.bairro, data.localidade, data.uf, data.cep]
+        .filter(Boolean)
+        .join(", ");
+
+    // Query mais grossa (CEP + cidade + UF) que o Nominatim resolve de forma
+    // confiavel, enquanto o displayAddress mantem o endereco completo para o usuario.
+    const searchQuery = [data.cep || normalizeCep(cepDigits), data.localidade, data.uf]
         .filter(Boolean)
         .join(", ");
 
     return {
-        query: address,
-        displayAddress: address,
+        query: searchQuery,
+        displayAddress,
         postcode: data.cep || normalizeCep(cepDigits)
     };
 }
@@ -1552,6 +1558,7 @@ async function openCallDetails(callId) {
         await loadComments(call.id);
         await Promise.all([
             loadReview(call.id),
+            loadVotes(call.id),
             loadCallImages(call.id, callAttachments, { title: "Anexos do chamado", limit: 3, excludeCommentAttachments: true }),
             loadCallHistory(call.id)
         ]);

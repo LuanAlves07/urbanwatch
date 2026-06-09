@@ -49,6 +49,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("LocationNotFoundException e mapeada para HTTP 404 (nao 500)")
+    void locationNotFound_returns404() throws Exception {
+        mockMvc.perform(get("/test/location-missing"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
     @DisplayName("parametro obrigatorio ausente retorna 400 (nao 500)")
     void missingParam_returns400() throws Exception {
         mockMvc.perform(get("/test/need-param"))
@@ -76,6 +84,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/no-resource")
         public void missingResource() throws NoResourceFoundException {
             throw new NoResourceFoundException(HttpMethod.GET, "/test/no-resource");
+        }
+
+        @GetMapping("/test/location-missing")
+        public void locationMissing() {
+            throw new LocationNotFoundException("Rua Inexistente, 99999-999");
         }
 
         @GetMapping("/test/need-param")
