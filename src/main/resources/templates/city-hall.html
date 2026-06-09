@@ -18,6 +18,7 @@
             </a>
 
             <nav class="city-nav" aria-label="Ações da prefeitura">
+                <a th:href="@{/}" class="city-nav-button">Ver site</a>
                 <button type="button" class="city-nav-button" data-city-refresh>Atualizar</button>
                 <strong data-city-user>Olá, Prefeitura!</strong>
                 <button type="button" class="city-logout" data-city-logout>Sair</button>
@@ -91,7 +92,7 @@
 
     <div class="city-modal" data-city-modal hidden>
         <div class="city-modal__backdrop" data-city-modal-close></div>
-        <section class="city-modal__panel" aria-label="Detalhes do chamado">
+        <section class="city-modal__panel" role="dialog" aria-modal="true" aria-label="Detalhes do chamado">
             <button type="button" class="city-modal__close" data-city-modal-close aria-label="Fechar">X</button>
             <div data-call-detail>
                 <p class="city-empty">Selecione um chamado para alterar status, pausar ou registrar observação.</p>

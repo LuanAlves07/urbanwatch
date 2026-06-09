@@ -60,7 +60,7 @@
                         <span>CEP do local:</span>
                         <div class="address-row">
                             <input id="alertCep" name="cep" type="text" maxlength="9" placeholder="XXXXX-XXX">
-                            <p data-address-text>Endereço nao informado</p>
+                            <p data-address-text>Endereço não informado</p>
                         </div>
                         <div class="map-panel map-panel--large" aria-label="Mapa do local">
                             <div id="createMap" class="leaflet-map"></div>
@@ -84,7 +84,7 @@
                         <label class="observations">
                             <span>Observações</span>
                             <textarea id="alertDescription" name="description" maxlength="100" required></textarea>
-                            <small>Máx 100 caractéres</small>
+                            <small>Máx 100 caracteres</small>
                         </label>
 
                         <button type="submit" class="create-submit" data-create-submit>CRIAR ALERTA <span>&rsaquo;</span></button>
@@ -95,7 +95,7 @@
     </main>
 
     <div class="call-modal" data-call-modal hidden>
-        <div class="call-modal__panel">
+        <div class="call-modal__panel" role="dialog" aria-modal="true" aria-label="Detalhes do chamado">
             <button type="button" class="call-modal__close" data-modal-close aria-label="Fechar">&times;</button>
             <div data-generic-detail>
                 <p class="call-modal__status" data-modal-status></p>
