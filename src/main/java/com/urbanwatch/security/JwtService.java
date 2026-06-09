@@ -3,6 +3,7 @@ package com.urbanwatch.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import javax.crypto.SecretKey;
@@ -21,6 +22,14 @@ public class JwtService {
 
     @Value("${jwt.expiration-ms}")
     private long expirationMs;
+
+    @PostConstruct
+    void validateSecret() {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException(
+                    "JWT secret invalido: defina a variavel de ambiente JWT_SECRET com pelo menos 32 caracteres (256 bits).");
+        }
+    }
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();

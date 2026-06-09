@@ -12,18 +12,22 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 @Service
 public class LocationService {
 
     private static final String NOMINATIM_URL = "https://nominatim.openstreetmap.org";
     private static final String USER_AGENT = "UrbanWatch/1.0";
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(8);
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
     public LocationService() {
-        this.httpClient = HttpClient.newHttpClient();
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
         this.objectMapper = new ObjectMapper();
     }
 
@@ -35,6 +39,7 @@ public class LocationService {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("User-Agent", USER_AGENT)
+                    .timeout(REQUEST_TIMEOUT)
                     .GET()
                     .build();
 
@@ -68,6 +73,7 @@ public class LocationService {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("User-Agent", USER_AGENT)
+                    .timeout(REQUEST_TIMEOUT)
                     .GET()
                     .build();
 
