@@ -13,8 +13,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -37,6 +39,7 @@ public class AuthService {
         this.userMapper = userMapper;
     }
 
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase();
 
@@ -48,7 +51,9 @@ public class AuthService {
         user.setName(request.name().trim());
         user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.setRole(resolveRole(request.role()));
+        // Auto-registro publico cria sempre um cidadao. Perfis CITY_HALL/ADMIN
+        // sao atribuidos internamente (seed/administracao), nunca pelo cliente.
+        user.setRole(Role.CITIZEN);
 
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser);
@@ -68,12 +73,5 @@ public class AuthService {
 
         String token = jwtService.generateToken(user);
         return new AuthResponse(token, "Bearer", userMapper.toResponse(user));
-    }
-
-    private Role resolveRole(Role requestedRole) {
-        if (requestedRole == null) {
-            return Role.CITIZEN;
-        }
-        return requestedRole;
     }
 }
