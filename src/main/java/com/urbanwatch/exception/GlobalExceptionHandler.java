@@ -96,6 +96,14 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
     }
 
+    @ExceptionHandler(LocationNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleLocationNotFound(
+            LocationNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
     @ExceptionHandler(CallAlreadyReviewedException.class)
     public ResponseEntity<ApiErrorResponse> handleCallAlreadyReviewed(
             CallAlreadyReviewedException exception,
