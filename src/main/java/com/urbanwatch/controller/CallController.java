@@ -35,10 +35,12 @@ public class CallController {
         this.callService = callService;
     }
 
-    // GET /calls — listar todos os chamados
+    // GET /calls — listar todos os chamados (paginado, teto de seguranca)
     @GetMapping
-    public ResponseEntity<List<CallResponse>> listarTodos() {
-        return ResponseEntity.ok(callService.listarTodos());
+    public ResponseEntity<List<CallResponse>> listarTodos(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(callService.listarTodos(page, size));
     }
 
     // GET /calls/{id} — buscar chamado por ID
@@ -56,12 +58,13 @@ public class CallController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // PUT /calls/{id} — atualizar chamado
+    // PUT /calls/{id} — atualizar chamado (somente autor ou CITY_HALL/ADMIN)
     @PutMapping("/{id}")
     public ResponseEntity<CallResponse> atualizar(
             @PathVariable Long id,
-            @Valid @RequestBody CallRequest request) {
-        return ResponseEntity.ok(callService.atualizar(id, request));
+            @Valid @RequestBody CallRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(callService.atualizar(id, request, userDetails.getUsername()));
     }
 
     // DELETE /calls/{id} — deletar chamado (apenas ADMIN)
@@ -114,10 +117,12 @@ public class CallController {
         return ResponseEntity.ok(callService.adicionarObservacaoPrefeitura(id, observacao));
     }
 
-    // GET /calls/criticos — listar chamados com SLA crítico
+    // GET /calls/criticos — listar chamados com SLA crítico (paginado)
     @GetMapping("/criticos")
-    public ResponseEntity<List<CallResponse>> listarCriticos() {
-        return ResponseEntity.ok(callService.listarCriticos());
+    public ResponseEntity<List<CallResponse>> listarCriticos(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(callService.listarCriticos(page, size));
     }
 
     // PATCH /calls/{id}/sla — recalcular SLA do chamado
@@ -127,12 +132,14 @@ public class CallController {
         return ResponseEntity.ok(callService.atualizarSla(id));
     }
 
-    // GET /calls/proximos — listar chamados próximos
+    // GET /calls/proximos — listar chamados próximos (paginado)
     @GetMapping("/proximos")
     public ResponseEntity<List<CallResponse>> listarProximos(
             @RequestParam Double latitude,
             @RequestParam Double longitude,
-            @RequestParam(defaultValue = "5.0") Double raio) {
-        return ResponseEntity.ok(callService.listarProximos(latitude, longitude, raio));
+            @RequestParam(defaultValue = "5.0") Double raio,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(callService.listarProximos(latitude, longitude, raio, page, size));
     }
 }
