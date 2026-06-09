@@ -21,7 +21,7 @@ body {
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: minmax(320px, 1fr) 390px;
+    grid-template-columns: minmax(300px, 1fr) clamp(280px, 32vw, 390px);
     gap: 86px;
     width: min(1120px, calc(100% - 48px));
     margin: 0 auto;
@@ -1385,5 +1385,13 @@ body {
 
     .map-panel--large {
         height: 280px;
+    }
+}
+
+/* Botao "Criar alerta" sem o gap grande no mobile/coluna unica */
+@media (max-width: 920px) {
+    .create-submit {
+        margin: 24px 0 0;
+        width: 100%;
     }
 }
