@@ -2,6 +2,11 @@
 
 # UrbanWatch
 
+## 🔗 Links do Projeto
+
+- 📂 Repositório: https://github.com/LuanAlves07/urbanwatch
+- 📚 Artigo e Documentação: https://drive.google.com/drive/folders/1wKn_TQwGmNczZzcMTBWE4V7LP9mgQ8zt?usp=share_link
+
 **Sistema de denúncias urbanas — registre problemas da cidade e acompanhe os chamados.**
 
 [![Java](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)](https://openjdk.org/)
