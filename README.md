@@ -42,6 +42,10 @@ que um produto, serve como **evidência prática** dos conceitos da disciplina: 
 sistema deve ser funcional e demonstrar, no código, os fundamentos de sistemas
 distribuídos vistos em aula.
 
+## Artigo
+
+Artigo do projeto: [acessar no Google Drive](https://drive.google.com/drive/folders/1wKn_TQwGmNczZzcMTBWE4V7LP9mgQ8zt?usp=share_link).
+
 ## Conceitos de Sistemas Distribuídos Aplicados
 
 | # | Conceito | Onde se manifesta no UrbanWatch |
