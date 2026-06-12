@@ -30,6 +30,10 @@ A aplicação combina uma **API REST** (Spring Boot) com um **frontend web**
 (Thymeleaf + JavaScript) que consome essa API, autenticação via **JWT**,
 persistência em **PostgreSQL** e **geolocalização** com OpenStreetMap.
 
+## Artigo
+
+https://drive.google.com/drive/folders/1wKn_TQwGmNczZzcMTBWE4V7LP9mgQ8zt?usp=share_link
+
 ## Objetivo
 
 Oferecer um canal simples e transparente entre **cidadãos** e **prefeitura** para:
